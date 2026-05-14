@@ -37,7 +37,13 @@
       "Bash(timeout 8 type \"C:\\\\Users\\\\Lenovo\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Lenovo-Desktop-Linkedinflow-fe\\\\18082987-7ec3-477c-bea8-703133104afc\\\\tasks\\\\bw3zsvdyh.output\")",
       "Bash(node -e \"const r = require\\('lucide-react'\\); const icons = ['ListOrdered','CalendarCheck','CalendarClock','CalendarPlus']; icons.forEach\\(i => console.log\\(i, !!r[i]\\)\\)\")",
       "Bash(node -e \"require\\('date-fns'\\); console.log\\('date-fns OK'\\)\")",
-      "Bash(node -e \"const df = require\\('date-fns'\\); console.log\\('isToday:', typeof df.isToday, 'isTomorrow:', typeof df.isTomorrow\\);\")"
+      "Bash(node -e \"const df = require\\('date-fns'\\); console.log\\('isToday:', typeof df.isToday, 'isTomorrow:', typeof df.isTomorrow\\);\")",
+      "Bash(dir \"C:\\\\Users\\\\Lenovo\\\\Desktop\" /b)",
+      "Bash(findstr -i linkedin)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Lenovo\\\\Desktop\" | Where-Object { $_.Name -imatch \"linkedin\" } | Select-Object Name)",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell([Environment]::GetFolderPath\\(\"Desktop\"\\))",
+      "Bash(node -e ' *)"
     ]
   }
 }

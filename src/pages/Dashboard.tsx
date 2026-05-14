@@ -8,7 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import { postsAPI } from '@/lib/api';
 import {
   MessageSquare,
-  Users,
   Calendar,
   CheckCircle,
   XCircle,
@@ -25,9 +24,10 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ideasAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { NumberTicker } from '@/components/ui/magic/number-ticker';
-import { BorderBeam } from '@/components/ui/magic/border-beam';
 import {
   AreaChart,
   Area,
@@ -59,21 +59,21 @@ function MetricCard({ title, value, sub, icon: Icon, color, bg, delay = 0, onCli
     <div
       onClick={onClick}
       className={cn(
-        'rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-3',
+        'rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm hover:shadow-md transition-shadow duration-200 space-y-2',
         onClick && 'cursor-pointer hover:-translate-y-0.5 transition-transform',
       )}
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-black uppercase tracking-wide">{title}</span>
-        <div className={cn('flex items-center justify-center w-8 h-8 rounded-lg', bg)}>
-          <Icon className={cn('h-4 w-4', color)} />
+        <div className={cn('flex items-center justify-center w-7 h-7 rounded-lg', bg)}>
+          <Icon className={cn('h-3.5 w-3.5', color)} />
         </div>
       </div>
       <div>
-        <p className={cn('text-3xl font-bold tracking-tight tabular-nums leading-tight', color)}>
+        <p className={cn('text-2xl font-bold tracking-tight tabular-nums leading-tight', color)}>
           <NumberTicker value={value} delay={delay} />
         </p>
-        <p className="text-xs text-[#86888a] mt-2">{sub}</p>
+        <p className="text-xs text-[#86888a] mt-1">{sub}</p>
       </div>
     </div>
   );
@@ -114,6 +114,7 @@ function ChartTooltip({ active, payload, label }: any) {
 
 export function Dashboard() {
   const { posts, linkedInStatus, setPosts } = useLinkedInStore();
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,15 +143,13 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('linkedinflow_ideas');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) setIdeas(parsed);
-      }
-    } catch {
-      // ignore malformed data
-    }
+    ideasAPI.getAll()
+      .then((res) => {
+        if (res.success) {
+          setIdeas(res.data.map((r) => ({ id: r.id, text: r.text, tag: r.tag, capturedAt: r.captured_at })));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const dismissOnboarding = () => {
@@ -163,10 +162,7 @@ export function Dashboard() {
     return ideas.filter(idea => new Date(idea.capturedAt).getTime() >= cutoff);
   }, [ideas]);
 
-  const [dailyPromptDismissed, setDailyPromptDismissed] = useState(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return sessionStorage.getItem(`linkedinflow_daily_prompt_${today}`) === '1';
-  });
+  const [dailyPromptDismissed, setDailyPromptDismissed] = useState(false);
 
   const queueSettings = useMemo(() => loadQueueSettings(), []);
 
@@ -182,11 +178,9 @@ export function Dashboard() {
     return format(nextQueueSlot, "EEE MMM d 'at' h:mm a");
   }, [nextQueueSlot]);
 
-  const showDailyPrompt = !dailyPromptDismissed && ideas.length > 0 && queueSettings.enabled && !!nextQueueSlot;
+  const showDailyPrompt = !dailyPromptDismissed && ideas.length > 0;
 
   const dismissDailyPrompt = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    sessionStorage.setItem(`linkedinflow_daily_prompt_${today}`, '1');
     setDailyPromptDismissed(true);
   };
 
@@ -206,7 +200,7 @@ export function Dashboard() {
   const recentPosts = useMemo(
     () => [...posts]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 8),
+      .slice(0, 5),
     [posts],
   );
 
@@ -387,8 +381,12 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_340px] items-stretch">
+
+        {/* ── Left column: chart → recent posts ─────────────────── */}
         <div className="space-y-3">
+
+          {/* Publishing activity */}
           <Card className="dashboard-panel border border-gray-200">
             <CardHeader className="border-b border-border/60 pb-4">
               <div className="flex items-start justify-between gap-4">
@@ -399,18 +397,16 @@ export function Dashboard() {
                     </div>
                     Publishing activity
                   </CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Published posts over the last 30 days.
-                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">Published posts over the last 30 days.</p>
                 </div>
                 <span className="section-label">Last 30 days</span>
               </div>
             </CardHeader>
             <CardContent className="pt-4">
               {isLoading ? (
-                <Skeleton className="h-[232px] w-full rounded-[1rem]" />
+                <Skeleton className="h-[160px] w-full rounded-[1rem]" />
               ) : hasActivity ? (
-                <ResponsiveContainer width="100%" height={232}>
+                <ResponsiveContainer width="100%" height={160}>
                   <AreaChart data={activityData} margin={{ top: 4, right: 6, left: -18, bottom: 0 }}>
                     <defs>
                       <linearGradient id="actGrad" x1="0" y1="0" x2="0" y2="1">
@@ -419,35 +415,14 @@ export function Dashboard() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={24}
-                    />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} interval={0} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={24} />
                     <Tooltip content={<ChartTooltip />} />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      name="Published"
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={2}
-                      fill="url(#actGrad)"
-                      dot={false}
-                      activeDot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }}
-                    />
+                    <Area type="monotone" dataKey="count" name="Published" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#actGrad)" dot={false} activeDot={{ r: 4, fill: 'hsl(var(--primary))', strokeWidth: 0 }} />
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-[232px] flex-col items-center justify-center gap-2 text-center">
+                <div className="flex h-[160px] flex-col items-center justify-center gap-2 text-center">
                   <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
                   <p className="text-sm font-medium text-foreground">No published posts yet</p>
                   <p className="text-xs text-muted-foreground">Activity will appear here after your first publish.</p>
@@ -456,250 +431,102 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Card className="dashboard-panel border border-gray-200 h-fit">
-              <CardHeader className="border-b border-border/60 pb-3">
-                <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
-                  <div className="icon-container-sm">
-                    <CheckCircle className="h-3.5 w-3.5" />
-                  </div>
-                  Workflow health
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Planning coverage based on published and scheduled posts.
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-4">
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <Skeleton className="h-40 w-40 rounded-full" />
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center">
-                    <div className="relative flex h-40 w-40 items-center justify-center">
-                      <div
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background: `conic-gradient(hsl(var(--primary)) 0 ${workflowHealth}%, hsl(var(--muted)) ${workflowHealth}% 100%)`,
-                        }}
-                      />
-                      <div className="absolute inset-3 rounded-full border border-border/70 bg-card shadow-inner flex flex-col items-center justify-center text-center">
-                        <p className="text-[54px] font-semibold tracking-tight tabular-nums leading-none">{workflowHealth}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">workflow score</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {!isLoading && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: 'Published', value: publishedCount, color: 'text-green-600 dark:text-green-400' },
-                      { label: 'Scheduled', value: scheduledCount, color: 'text-blue-600 dark:text-blue-400' },
-                      { label: 'Drafts', value: draftCount, color: 'text-amber-600 dark:text-amber-400' },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-2xl border border-border/70 bg-muted/25 px-3 py-3 text-center">
-                        <p className={cn('text-lg font-semibold tabular-nums', item.color)}>{item.value}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{item.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="dashboard-panel border border-gray-200 h-fit flex flex-col">
-              <CardHeader className="border-b border-border/60 pb-3">
-                <div className="flex items-center justify-between gap-4">
-                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
-                    <div className="icon-container-sm">
-                      <MessageSquare className="h-3.5 w-3.5" />
-                    </div>
-                    Recent posts
-                  </CardTitle>
-                  {!isLoading && posts.length > 0 && (
-                    <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/dashboard/posts')}>
-                      Manage all
-                      <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="overflow-y-auto max-h-[400px]">
-                {isLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div key={i} className="flex items-start gap-3 py-1">
-                        <Skeleton className="mt-1.5 h-2 w-2 shrink-0 rounded-full" />
-                        <div className="flex-1 space-y-2">
-                          <Skeleton className="h-3.5 w-full" />
-                          <Skeleton className="h-3 w-2/3" />
-                        </div>
-                        <Skeleton className="h-5 w-14 shrink-0 rounded-full" />
-                      </div>
-                    ))}
-                  </div>
-                ) : recentPosts.length > 0 ? (
-                  <div className="divide-y divide-border">
-                    {recentPosts.map((post, i) => {
-                      const meta = statusMeta[post.status];
-                      return (
-                        <motion.div
-                          key={post.id}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.03, duration: 0.22, ease: [0.33, 1, 0.68, 1] }}
-                          className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
-                        >
-                          <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', meta.dot)} />
-                          <div className="flex-1 min-w-0 space-y-0.5">
-                            <p className="line-clamp-1 text-[13px] leading-relaxed text-foreground">{post.content}</p>
-                            <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
-                              <span>{meta.label}</span>
-                              <span>·</span>
-                              <span>{format(new Date(post.created_at), 'MMM d, yyyy')}</span>
-                              {post.status === 'scheduled' && post.scheduled_at && (
-                                <>
-                                  <span>·</span>
-                                  <span className="text-blue-600 dark:text-blue-400">
-                                    Sends {format(new Date(post.scheduled_at), 'MMM d, h:mm a')}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                          <Badge variant="outline" className={cn('shrink-0 capitalize text-[10px] font-medium', meta.badge)}>
-                            {post.status}
-                          </Badge>
-                        </motion.div>
-                      );
-                    })}
-                    {posts.length > 8 && (
-                      <div className="pt-3 text-center">
-                        <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/dashboard/posts')}>
-                          View all {posts.length} posts
-                          <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="py-12 text-center space-y-3">
-                    <div className="icon-container mx-auto">
-                      <MessageSquare className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">No posts yet</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Create your first post to start building your audience.
-                      </p>
-                    </div>
-                    <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
-                      <Plus className="mr-1.5 h-3.5 w-3.5" />
-                      Create your first post
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {showDailyPrompt && (
-            <Card className="dashboard-panel border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-white h-fit">
-              <CardContent className="pt-4 pb-4 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
-                      <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
-                    </div>
-                    <p className="text-sm font-semibold text-foreground">Today's action</p>
-                  </div>
-                  <button
-                    onClick={dismissDailyPrompt}
-                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                  >
-                    dismiss
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  You have <span className="font-semibold text-foreground">{ideas.length} idea{ideas.length !== 1 ? 's' : ''}</span> captured.
-                  Your next queue slot is <span className="font-semibold text-foreground">{slotLabel}</span>.
-                </p>
-                <Button
-                  size="sm"
-                  className="w-full h-8 text-xs"
-                  onClick={() => navigate('/dashboard/ai-interview')}
-                >
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  Turn an idea into a post
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="dashboard-panel border border-gray-200 h-fit">
+          {/* Recent posts — shows up to 8 to reduce empty space */}
+          <Card className="dashboard-panel border border-gray-200">
             <CardHeader className="border-b border-border/60 pb-3">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center justify-between gap-4">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
                   <div className="icon-container-sm">
-                    <FileText className="h-3.5 w-3.5" />
+                    <MessageSquare className="h-3.5 w-3.5" />
                   </div>
-                  Documents
+                  Recent posts
                 </CardTitle>
-                <span className="section-label">Queue</span>
+                {!isLoading && posts.length > 0 && (
+                  <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/dashboard/posts')}>
+                    Manage all
+                    <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 pt-3">
+            <CardContent>
               {isLoading ? (
                 <div className="space-y-3">
-                  {Array.from({ length: 2 }).map((_, i) => (
-                    <Skeleton key={i} className="h-32 w-full rounded-[1.1rem]" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-3 py-1">
+                      <Skeleton className="mt-1.5 h-2 w-2 shrink-0 rounded-full" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3.5 w-full" />
+                        <Skeleton className="h-3 w-2/3" />
+                      </div>
+                      <Skeleton className="h-5 w-14 shrink-0 rounded-full" />
+                    </div>
                   ))}
                 </div>
-              ) : pendingDocs.length > 0 ? (
-                <div className="space-y-3">
-                  {scheduledPosts[0]?.scheduled_at && (
-                    <div className="rounded-2xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-primary">
-                      Next scheduled: {format(new Date(scheduledPosts[0].scheduled_at), 'MMM d, h:mm a')}
+              ) : recentPosts.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {recentPosts.map((post, i) => {
+                    const meta = statusMeta[post.status];
+                    return (
+                      <motion.div
+                        key={post.id}
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.03, duration: 0.22, ease: [0.33, 1, 0.68, 1] }}
+                        className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', meta.dot)} />
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <p className="line-clamp-1 text-[13px] leading-relaxed text-foreground">{post.content}</p>
+                          <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                            <span>{meta.label}</span>
+                            <span>·</span>
+                            <span>{format(new Date(post.created_at), 'MMM d, yyyy')}</span>
+                            {post.status === 'scheduled' && post.scheduled_at && (
+                              <>
+                                <span>·</span>
+                                <span className="text-blue-600 dark:text-blue-400">
+                                  Sends {format(new Date(post.scheduled_at), 'MMM d, h:mm a')}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Badge variant="outline" className={cn('shrink-0 capitalize text-[10px] font-medium', meta.badge)}>
+                          {post.status}
+                        </Badge>
+                      </motion.div>
+                    );
+                  })}
+                  {posts.length > 5 && (
+                    <div className="pt-3 text-center">
+                      <Button variant="ghost" size="sm" className="text-xs" onClick={() => navigate('/dashboard/posts')}>
+                        View all {posts.length} posts
+                        <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   )}
-                  {pendingDocs.map((post) => {
-                  const meta = statusMeta[post.status];
-                  const dueLabel = post.status === 'scheduled' && post.scheduled_at
-                    ? `Due ${format(new Date(post.scheduled_at), 'MMM d, h:mm a')}`
-                    : `Created ${format(new Date(post.created_at), 'MMM d')}`;
-
-                  return (
-                    <div key={post.id} className="rounded-[1.1rem] border border-border/70 bg-background px-4 py-4 shadow-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <Badge variant="outline" className={cn('text-[10px] font-medium', meta.badge)}>
-                          {meta.label}
-                        </Badge>
-                        <span className="text-[11px] text-muted-foreground">{dueLabel}</span>
-                      </div>
-                      <p className="mt-3 line-clamp-2 text-sm font-medium text-foreground leading-relaxed">
-                        {post.content}
-                      </p>
-                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="capitalize">{post.post_type} post</span>
-                        <span>{post.link_url ? 'Link attached' : 'No link'}</span>
-                      </div>
-                    </div>
-                  );
-                  })}
                 </div>
               ) : (
-                <div className="rounded-[1.1rem] border border-dashed border-border/70 bg-muted/20 px-4 py-6 text-center">
-                  <p className="text-sm font-medium text-foreground">No drafts or scheduled posts</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Your upcoming content will appear here.</p>
+                <div className="py-12 text-center space-y-3">
+                  <div className="icon-container mx-auto">
+                    <MessageSquare className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">No posts yet</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">Create your first post to start building your audience.</p>
+                  </div>
+                  <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Create your first post
+                  </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="dashboard-panel border border-gray-200 h-fit">
+          {/* This week's ideas */}
+          <Card className="dashboard-panel border border-gray-200">
             <CardHeader className="border-b border-border/60 pb-3">
               <div className="flex items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
@@ -708,12 +535,17 @@ export function Dashboard() {
                   </div>
                   This week's ideas
                 </CardTitle>
-                <span className="section-label">{weeklyIdeas.length} captured</span>
+                <div className="flex items-center gap-2">
+                  <span className="section-label">{weeklyIdeas.length} captured</span>
+                  <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => navigate('/dashboard/ideas')}>
+                    View all <ArrowRight className="ml-1 h-3 w-3" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="pt-3">
               {weeklyIdeas.length === 0 ? (
-                <div className="py-6 text-center space-y-3">
+                <div className="flex items-center justify-between rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-4">
                   <p className="text-sm text-muted-foreground">No ideas captured this week</p>
                   <Button size="sm" variant="outline" onClick={() => navigate('/dashboard/ideas')}>
                     Capture idea
@@ -721,7 +553,7 @@ export function Dashboard() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {weeklyIdeas.slice(0, 3).map((idea) => {
+                  {weeklyIdeas.slice(0, 5).map((idea) => {
                     const tagColors: Record<string, string> = {
                       win: 'bg-green-100 text-green-700',
                       lesson: 'bg-blue-100 text-blue-700',
@@ -732,9 +564,9 @@ export function Dashboard() {
                     };
                     const tagClass = tagColors[idea.tag] ?? 'bg-amber-100 text-amber-700';
                     return (
-                      <div key={idea.id} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
-                        <p className="flex-1 min-w-0 line-clamp-1 text-xs text-foreground">{idea.text}</p>
-                        <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize', tagClass)}>
+                      <div key={idea.id} className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2.5 hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/ideas')}>
+                        <p className="flex-1 min-w-0 line-clamp-1 text-sm text-foreground">{idea.text}</p>
+                        <span className={cn('shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium capitalize', tagClass)}>
                           {idea.tag}
                         </span>
                       </div>
@@ -744,68 +576,139 @@ export function Dashboard() {
               )}
             </CardContent>
           </Card>
+        </div>
 
-          <Card className={cn('dashboard-panel relative overflow-hidden border border-gray-200 h-fit', isLinkedInConnected && 'border-emerald-200/70 dark:border-emerald-800/50')}>
-            {isLinkedInConnected && (
-              <BorderBeam size={120} duration={20} colorFrom="#10b981" colorTo="#34d399" borderWidth={1.5} />
-            )}
+        {/* ── Right column: health → prompt → queue ─────────────── */}
+        <div className="flex flex-col gap-3">
+
+          {/* Workflow health */}
+          <Card className="dashboard-panel border border-gray-200">
             <CardHeader className="border-b border-border/60 pb-3">
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
                 <div className="icon-container-sm">
-                  <Users className="h-3.5 w-3.5" />
+                  <CheckCircle className="h-3.5 w-3.5" />
                 </div>
-                LinkedIn
+                Workflow health
               </CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">Planning coverage based on published and scheduled posts.</p>
             </CardHeader>
-            <CardContent className="space-y-3 pt-3">
-              <div className="flex items-center gap-2 rounded-2xl bg-muted/40 px-3 py-2.5">
-                <span className={cn('h-2 w-2 rounded-full shrink-0', isLinkedInConnected ? 'bg-green-500 pulse-dot' : 'bg-muted-foreground/40')} />
-                <span className={cn('text-xs font-medium', isLinkedInConnected ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground')}>
-                  {isLinkedInConnected ? 'Connected' : 'Not connected'}
-                </span>
-              </div>
-
+            <CardContent className="space-y-3 pt-4">
               {isLoading ? (
-                <div className="space-y-2.5">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <Skeleton className="h-3 w-20" />
-                      <Skeleton className="h-3 w-6" />
-                    </div>
-                  ))}
+                <div className="flex items-center justify-center">
+                  <Skeleton className="h-24 w-24 rounded-full" />
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {[
-                    { icon: CheckCircle, label: 'Published', value: publishedCount, color: 'text-green-600 dark:text-green-400' },
-                    { icon: CalendarDays, label: 'Scheduled', value: scheduledCount, color: 'text-blue-600 dark:text-blue-400' },
-                    { icon: Clock, label: 'Drafts', value: draftCount, color: 'text-amber-600 dark:text-amber-400' },
-                    { icon: XCircle, label: 'Failed', value: failedCount, color: 'text-red-600 dark:text-red-400' },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between py-1">
-                      <div className="flex items-center gap-2">
-                        <item.icon className={cn('h-3.5 w-3.5', item.color)} />
-                        <span className="text-xs text-muted-foreground">{item.label}</span>
-                      </div>
-                      <span className={cn('text-sm font-semibold tabular-nums', item.color)}>{item.value}</span>
+                <div className="flex items-center justify-center">
+                  <div className="relative flex h-24 w-24 items-center justify-center">
+                    <div
+                      className="absolute inset-0 rounded-full"
+                      style={{ background: `conic-gradient(hsl(var(--primary)) 0 ${workflowHealth}%, hsl(var(--muted)) ${workflowHealth}% 100%)` }}
+                    />
+                    <div className="absolute inset-2.5 rounded-full border border-border/70 bg-card shadow-inner flex flex-col items-center justify-center text-center">
+                      <p className="text-[30px] font-semibold tracking-tight tabular-nums leading-none">{workflowHealth}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">score</p>
                     </div>
-                  ))}
+                  </div>
                 </div>
               )}
-
-              {!isLinkedInConnected ? (
-                <Button size="sm" className="w-full" onClick={() => navigate('/dashboard/linkedin-vault')}>
-                  Connect LinkedIn
-                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-                </Button>
-              ) : (
-                <Button variant="ghost" size="sm" className="w-full text-xs" onClick={() => navigate('/dashboard/posts')}>
-                  Manage posts
-                  <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
+              {!isLoading && (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Published', value: publishedCount, color: 'text-green-600' },
+                    { label: 'Scheduled', value: scheduledCount, color: 'text-blue-600' },
+                    { label: 'Drafts',    value: draftCount,     color: 'text-amber-600' },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-border/70 bg-muted/25 px-2 py-2.5 text-center">
+                      <p className={cn('text-base font-semibold tabular-nums', item.color)}>{item.value}</p>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">{item.label}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Daily prompt */}
+          {showDailyPrompt && (
+            <Card className="dashboard-panel border border-amber-200/70 bg-gradient-to-br from-amber-50/80 to-white">
+              <CardContent className="pt-4 pb-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-7 w-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                      <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">Today's action</p>
+                  </div>
+                  <button onClick={dismissDailyPrompt} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors shrink-0">dismiss</button>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  You have <span className="font-semibold text-foreground">{ideas.length} idea{ideas.length !== 1 ? 's' : ''}</span> captured.
+                  {slotLabel ? <> Your next queue slot is <span className="font-semibold text-foreground">{slotLabel}</span>.</> : <> Turn one into a LinkedIn post with AI.</>}
+                </p>
+                <Button size="sm" className="w-full h-8 text-xs" onClick={() => navigate('/dashboard/ai-interview')}>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  Turn an idea into a post
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Upcoming queue */}
+          <Card className="dashboard-panel border border-gray-200 flex flex-col flex-1 min-h-0">
+            <CardHeader className="border-b border-border/60 pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base font-semibold text-black">
+                  <div className="icon-container-sm">
+                    <FileText className="h-3.5 w-3.5" />
+                  </div>
+                  Upcoming
+                </CardTitle>
+                <span className="section-label">Queue</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-3 flex-1 overflow-y-auto">
+              {isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 2 }).map((_, i) => (
+                    <Skeleton key={i} className="h-28 w-full rounded-[1.1rem]" />
+                  ))}
+                </div>
+              ) : pendingDocs.length > 0 ? (
+                <div className="space-y-2.5">
+                  {scheduledPosts[0]?.scheduled_at && (
+                    <div className="rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-primary">
+                      Next scheduled: {format(new Date(scheduledPosts[0].scheduled_at), 'MMM d, h:mm a')}
+                    </div>
+                  )}
+                  {pendingDocs.map((post) => {
+                    const meta = statusMeta[post.status];
+                    const dueLabel = post.status === 'scheduled' && post.scheduled_at
+                      ? `Due ${format(new Date(post.scheduled_at), 'MMM d, h:mm a')}`
+                      : `Created ${format(new Date(post.created_at), 'MMM d')}`;
+                    return (
+                      <div key={post.id} className="rounded-xl border border-border/70 bg-background px-3 py-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <Badge variant="outline" className={cn('text-[10px] font-medium', meta.badge)}>{meta.label}</Badge>
+                          <span className="text-[11px] text-muted-foreground">{dueLabel}</span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-sm font-medium text-foreground leading-relaxed">{post.content}</p>
+                        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="capitalize">{post.post_type} post</span>
+                          <span>{post.link_url ? 'Link attached' : 'No link'}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-5 text-center">
+                  <p className="text-sm font-medium text-foreground">No drafts or scheduled posts</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Your upcoming content will appear here.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </div>

@@ -242,7 +242,7 @@
 
   /* ── Sidebar nav item ──────────────────── */
   .sidebar-item {
-    @apply flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-150 cursor-pointer select-none text-[#191919] border border-transparent;
+    @apply flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13px] font-semibold transition-all duration-150 cursor-pointer select-none text-[#191919] border border-transparent;
   }
 
   .sidebar-item:hover {
@@ -265,21 +265,11 @@
   }
 
   .dashboard-shell {
-    background:
-      radial-gradient(circle, rgba(10, 102, 194, 0.07) 1px, transparent 1.2px),
-      radial-gradient(70% 50% at 15% 0%, rgba(10, 102, 194, 0.10), transparent 70%),
-      radial-gradient(80% 55% at 100% 100%, rgba(10, 102, 194, 0.09), transparent 72%),
-      linear-gradient(180deg, #eef3f8 0%, #eaf1f8 55%, #e6eef8 100%);
-    background-size: 22px 22px, auto, auto, auto;
+    background: #f9f8f6;
   }
 
   .dark .dashboard-shell {
-    background:
-      radial-gradient(circle, rgba(10, 102, 194, 0.07) 1px, transparent 1.2px),
-      radial-gradient(70% 50% at 15% 0%, rgba(10, 102, 194, 0.10), transparent 70%),
-      radial-gradient(80% 55% at 100% 100%, rgba(10, 102, 194, 0.09), transparent 72%),
-      linear-gradient(180deg, #eef3f8 0%, #eaf1f8 55%, #e6eef8 100%);
-    background-size: 22px 22px, auto, auto, auto;
+    background: #f9f8f6;
   }
 
   .dashboard-panel {

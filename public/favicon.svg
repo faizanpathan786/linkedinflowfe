@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Light blue rounded square background (primary/20 ≈ #d6e8f7) -->
+  <rect width="32" height="32" rx="8" fill="#d6e8f7"/>
+
+  <!-- Lucide Linkedin icon in LinkedIn blue (#0a66c2), 20px centered -->
+  <g transform="translate(4,4) scale(1)" fill="#0a66c2">
+    <circle cx="4" cy="4" r="2"/>
+    <rect x="2" y="9" width="4" height="12"/>
+    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+  </g>
+</svg>

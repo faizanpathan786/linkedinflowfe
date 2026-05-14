@@ -109,6 +109,16 @@ export function FinalCTA() {
 
         <SplitHeading />
 
+        <motion.p
+          className="text-2xl md:text-3xl font-bold text-white mb-4 mt-3 mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={VP}
+          transition={{ duration: 0.55, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        >
+          Never Miss a LinkedIn Post Again
+        </motion.p>
+
         <motion.p className="text-base text-white/70 mb-6 max-w-2xl mx-auto leading-relaxed"
           initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
           whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}

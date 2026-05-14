@@ -39,6 +39,7 @@ interface LinkedInState {
   addPost: (post: Post) => void;
   removePost: (id: string) => void;
   addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'> & { read?: boolean }) => void;
+  markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   clearNotifications: () => void;
   // Loading
@@ -49,12 +50,10 @@ interface LinkedInState {
 }
 
 function createNotificationFromPost(post: Post): Omit<AppNotification, 'id' | 'createdAt' | 'read'> | null {
+  const preview = post.content.length > 80 ? `${post.content.slice(0, 80).trimEnd()}…` : post.content;
+
   if (post.status === 'published') {
-    return {
-      type: 'success',
-      title: 'Post published',
-      message: post.content.length > 80 ? `${post.content.slice(0, 80).trimEnd()}…` : post.content,
-    };
+    return { type: 'success', title: 'Post published', message: preview };
   }
 
   if (post.status === 'failed') {
@@ -63,6 +62,17 @@ function createNotificationFromPost(post: Post): Omit<AppNotification, 'id' | 'c
       title: 'Post failed',
       message: post.failure_reason || post.error_message || post.error || 'Publishing failed.',
     };
+  }
+
+  if (post.status === 'draft') {
+    return { type: 'info', title: 'Post saved as draft', message: preview };
+  }
+
+  if (post.status === 'scheduled') {
+    const when = post.scheduled_at
+      ? new Date(post.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+      : 'a future time';
+    return { type: 'info', title: 'Post scheduled', message: `Sends on ${when} — ${preview}` };
   }
 
   return null;
@@ -133,6 +143,9 @@ export const useLinkedInStore = create<LinkedInState>((set) => ({
       read: notification.read ?? false,
       ...notification,
     }, ...state.notifications],
+  })),
+  markNotificationRead: (id) => set((state) => ({
+    notifications: state.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
   })),
   markAllNotificationsRead: () => set((state) => ({
     notifications: state.notifications.map((notification) => ({ ...notification, read: true })),

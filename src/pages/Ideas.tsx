@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lightbulb, Trash2 } from 'lucide-react';
+import { Lightbulb, Trash2, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { QuickCaptureModal, type Idea, type IdeaTag } from '@/components/posts/QuickCaptureModal';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ideasAPI } from '@/lib/api';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,17 +61,28 @@ const FILTER_CHIPS: FilterChip[] = [
 
 export function Ideas() {
   const navigate = useNavigate();
+  const { user: _user } = useAuthStore();
 
-  const [ideas, setIdeas] = useState<Idea[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('linkedinflow_ideas') || '[]');
-    } catch {
-      return [];
-    }
-  });
-
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTag, setActiveTag] = useState<FilterTag>('all');
   const [captureOpen, setCaptureOpen] = useState(false);
+
+  useEffect(() => {
+    ideasAPI.getAll()
+      .then((res) => {
+        if (res.success) {
+          setIdeas(res.data.map((r) => ({
+            id: r.id,
+            text: r.text,
+            tag: r.tag as IdeaTag,
+            capturedAt: r.captured_at,
+          })));
+        }
+      })
+      .catch(() => toast.error('Failed to load ideas.'))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   // ---- Derived ----
   const filtered = activeTag === 'all' ? ideas : ideas.filter((i) => i.tag === activeTag);
@@ -79,29 +92,44 @@ export function Ideas() {
     setIdeas((prev) => [idea, ...prev]);
   };
 
-  const deleteIdea = (id: string) => {
-    const updated = ideas.filter((i) => i.id !== id);
-    setIdeas(updated);
-    localStorage.setItem('linkedinflow_ideas', JSON.stringify(updated));
-    toast.success('Idea deleted.');
+  const deleteIdea = async (id: string) => {
+    setIdeas((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await ideasAPI.delete(id);
+      toast.success('Idea deleted.');
+    } catch {
+      toast.error('Failed to delete idea.');
+      // refetch to restore consistent state
+      ideasAPI.getAll().then((res) => {
+        if (res.success) setIdeas(res.data.map((r) => ({ id: r.id, text: r.text, tag: r.tag as IdeaTag, capturedAt: r.captured_at })));
+      }).catch(() => {});
+    }
   };
 
   // ---- Render ----
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Lightbulb className="h-6 w-6 text-amber-500" />
-          <h1 className="text-2xl font-semibold tracking-tight">Ideas</h1>
-          <Badge variant="secondary" className="text-xs">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <Lightbulb className="h-5 w-5 text-amber-500 shrink-0" />
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight truncate">Ideas</h1>
+          <Badge variant="secondary" className="text-xs shrink-0">
             {ideas.length}
           </Badge>
         </div>
-        <Button size="sm" onClick={() => setCaptureOpen(true)}>
-          <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
-          Capture idea
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button size="sm" variant="outline" onClick={() => navigate('/dashboard/weekly')}>
+            <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden xs:inline">Weekly Workflow</span>
+            <span className="xs:hidden">Weekly</span>
+          </Button>
+          <Button size="sm" onClick={() => setCaptureOpen(true)}>
+            <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden xs:inline">Capture idea</span>
+            <span className="xs:hidden">Capture</span>
+          </Button>
+        </div>
       </div>
 
       {/* Tag filter chips */}
@@ -127,7 +155,7 @@ export function Ideas() {
       {/* Ideas grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {filtered.length === 0 && ideas.length > 0 && (
-          <div className="col-span-2 flex flex-col items-center justify-center py-20 gap-3 text-center">
+          <div className="col-span-full flex flex-col items-center justify-center py-20 gap-3 text-center">
             <p className="text-sm font-semibold text-foreground">No ideas with this tag</p>
             <p className="text-xs text-muted-foreground">
               Try selecting a different filter or capture a new idea.
@@ -138,8 +166,14 @@ export function Ideas() {
           </div>
         )}
 
-        {ideas.length === 0 && (
-          <div className="col-span-2 flex flex-col items-center justify-center py-20 gap-4 text-center">
+        {isLoading && (
+          <div className="col-span-full flex justify-center py-20">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        )}
+
+        {!isLoading && ideas.length === 0 && (
+          <div className="col-span-full flex flex-col items-center justify-center py-20 gap-4 text-center">
             <div className="h-14 w-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-2xl">
               💡
             </div>

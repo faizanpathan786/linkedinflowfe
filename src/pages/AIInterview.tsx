@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ideasAPI, brandVoiceAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,18 +27,6 @@ const QUESTIONS = [
     placeholder: 'B2B founders. My younger self. Anyone who has struggled with X...',
   },
   {
-    key: 'q3' as const,
-    label: 'What did you learn or discover?',
-    placeholder:
-      'That most people overcomplicate this. That consistency beats perfection. That the real problem was...',
-  },
-  {
-    key: 'q4' as const,
-    label: "What is the uncomfortable truth most people won't say?",
-    placeholder:
-      "Most advice on this is wrong. The thing nobody tells you is... The real reason this fails is...",
-  },
-  {
     key: 'q5' as const,
     label: 'What should the reader do differently after reading this?',
     placeholder: 'Stop doing X. Start asking Y. Rethink how you approach Z...',
@@ -54,37 +44,57 @@ const STYLE_OPTIONS: Array<{ value: StyleOption; label: string; description: str
 // ── Fallback prompt builder (module-level) ────────────────────────────────────
 
 function buildFallbackPrompt(
-  answers: { q1: string; q2: string; q3: string; q4: string; q5: string },
+  answers: { q1: string; q2: string; q5: string },
   style: string,
   brandVoice: { tone?: string; style?: string }
 ): string {
-  return `Write 3 LinkedIn post variations in the "${style}" style.
+  const styleGuides: Record<string, string> = {
+    story: `Tell it as a narrative arc: setup → conflict or turning point → resolution → lesson. Use short punchy sentences. The hook should drop the reader into the middle of the action.`,
+    opinion: `Open with a bold, possibly controversial claim. Back it with 2-3 concrete reasons or examples. End with a clear call-to-think that invites debate. Don't hedge — commit to the stance.`,
+    insight: `Distill the experience into the single most non-obvious lesson. Use a numbered or bulleted breakdown only if it genuinely clarifies. Lead with the counterintuitive truth, not the setup.`,
+  };
 
-${brandVoice.tone ? `Tone: ${brandVoice.tone}` : ''}
-${brandVoice.style ? `Style notes: ${brandVoice.style}` : ''}
+  return `You are a ghostwriter for a founder on LinkedIn. Write 3 distinct post variations based on the inputs below.
 
-What happened: ${answers.q1}
-Who it's for: ${answers.q2}
-What I learned: ${answers.q3}
-Uncomfortable truth: ${answers.q4}
-What the reader should do: ${answers.q5}
+STYLE: ${style}
+Style guide: ${styleGuides[style] || styleGuides.story}
+${brandVoice.tone ? `\nTONE: ${brandVoice.tone}` : ''}
+${brandVoice.style ? `VOICE NOTES: ${brandVoice.style}` : ''}
 
-Rules:
-- NEVER start with "In today's fast-paced digital landscape"
-- NEVER use "I'm excited to share" or "Thrilled to announce"
-- Sound like a real founder, not a content team
-- Keep it under 300 words per variation
-- Each variation should have a different hook style`;
+INPUTS:
+- What happened: ${answers.q1}
+- Who it's for: ${answers.q2 || 'founders and professionals'}
+- What the reader should do differently: ${answers.q5 || 'think differently about this topic'}
+
+VARIATION HOOKS — use a different hook type for each:
+1. Open with a specific number, stat, or concrete detail ("I lost $12K in 3 days.")
+2. Open with a counter-intuitive statement or confession ("Everyone told me to do X. I did the opposite.")
+3. Open with a question that creates instant tension ("What would you do if your best customer ghosted you?")
+
+FORMAT FOR EACH VARIATION:
+[Hook — 1 sentence, max 15 words]
+
+[Body — 3-5 short paragraphs, each 1-3 sentences. Leave a blank line between each.]
+
+[Closing line — a punchy takeaway or call-to-action, 1 sentence]
+
+HARD RULES:
+- Never open with "In today's", "I'm excited to share", "Thrilled to announce", "Game-changer", or "Leverage"
+- No corporate jargon or buzzwords
+- Write in first person, past tense for the story, present tense for opinions/insights
+- Max 280 words per variation
+- Sound like a real person writing from experience, not an AI writing a LinkedIn post`;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function AIInterview() {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [searchParams] = useSearchParams();
   const ideaId = searchParams.get('idea');
 
-  const [answers, setAnswers] = useState({ q1: '', q2: '', q3: '', q4: '', q5: '' });
+  const [answers, setAnswers] = useState({ q1: '', q2: '', q5: '' });
   const [style, setStyle] = useState<StyleOption>('story');
   const [isGenerating, setIsGenerating] = useState(false);
   const [variations, setVariations] = useState<Array<{ type: string; content: string; hook: string }> | null>(null);
@@ -94,17 +104,14 @@ export function AIInterview() {
   // Pre-fill q1 from a saved idea if ideaId is present
   useEffect(() => {
     if (!ideaId) return;
-    try {
-      const raw = localStorage.getItem('linkedinflow_ideas');
-      if (!raw) return;
-      const ideas: Array<{ id: string; text: string }> = JSON.parse(raw);
-      const idea = ideas.find((i) => i.id === ideaId);
-      if (idea) {
-        setAnswers((a) => ({ ...a, q1: idea.text }));
-      }
-    } catch {
-      // ignore malformed data
-    }
+    ideasAPI.getAll()
+      .then((res) => {
+        if (res.success) {
+          const idea = res.data.find((i) => i.id === ideaId);
+          if (idea) setAnswers((a) => ({ ...a, q1: idea.text }));
+        }
+      })
+      .catch(() => {});
   }, [ideaId]);
 
   const handleGenerate = async () => {
@@ -113,13 +120,12 @@ export function AIInterview() {
     setGenerateError(null);
     setFallbackPrompt(null);
 
-    // Load brand voice from localStorage
     let brandVoice: { tone?: string; style?: string; examples?: string } = {};
     try {
-      const bv = localStorage.getItem('linkedinflow_brand_voice');
-      if (bv) brandVoice = JSON.parse(bv);
+      const bvRes = await brandVoiceAPI.get();
+      if (bvRes.success && bvRes.data) brandVoice = bvRes.data;
     } catch {
-      // ignore malformed data
+      // proceed without brand voice
     }
 
     try {
@@ -152,26 +158,18 @@ export function AIInterview() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">AI Post Interview</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Answer 5 questions and get 3 LinkedIn post variations tailored to your voice.
-        </p>
-      </div>
-
+    <div className="flex flex-col lg:h-full lg:overflow-hidden">
       {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:flex-1 lg:grid-cols-[1fr_400px] gap-6 lg:overflow-hidden">
         {/* ── Left: Interview form ─────────────────────────────────────────── */}
-        <Card>
+        <Card className="lg:overflow-y-auto">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2 text-base">
               <Sparkles className="h-4 w-4 text-primary" />
               AI Post Interview
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              Answer 5 questions. Get 3 LinkedIn post variations.
+              Answer 3 questions. Get 3 LinkedIn post variations.
             </p>
           </CardHeader>
 
@@ -198,7 +196,7 @@ export function AIInterview() {
             {/* Style picker */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold text-foreground">Post style</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {STYLE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
@@ -242,7 +240,7 @@ export function AIInterview() {
         </Card>
 
         {/* ── Right: Results ───────────────────────────────────────────────── */}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:overflow-y-auto">
           {/* Loading */}
           {isGenerating && (
             <div className="rounded-xl border border-border p-10 text-center space-y-3">
@@ -335,3 +333,4 @@ export function AIInterview() {
     </div>
   );
 }
+

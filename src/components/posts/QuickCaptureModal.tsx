@@ -5,6 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ideasAPI } from '@/lib/api';
 
 export type IdeaTag = 'win' | 'lesson' | 'opinion' | 'thought' | 'update' | 'question';
 
@@ -39,37 +41,33 @@ export interface QuickCaptureModalProps {
 }
 
 export function QuickCaptureModal({ open, onOpenChange, onSaved }: QuickCaptureModalProps) {
+  const { user: _user } = useAuthStore();
   const [text, setText] = useState('');
   const [selectedTag, setSelectedTag] = useState<IdeaTag>(DEFAULT_TAG);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
-
-    const newIdea: Idea = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : Date.now().toString(),
-      text: trimmed,
-      tag: selectedTag,
-      capturedAt: new Date().toISOString(),
-    };
-
-    const existing: Idea[] = (() => {
-      try {
-        return JSON.parse(localStorage.getItem('linkedinflow_ideas') || '[]');
-      } catch {
-        return [];
-      }
-    })();
-
-    localStorage.setItem('linkedinflow_ideas', JSON.stringify([newIdea, ...existing]));
-
-    onSaved?.(newIdea);
-    toast.success('Idea captured.');
-    setText('');
-    setSelectedTag(DEFAULT_TAG);
-    onOpenChange?.(false);
+    setIsSaving(true);
+    try {
+      const res = await ideasAPI.create(trimmed, selectedTag);
+      const newIdea: Idea = {
+        id: res.data.id,
+        text: res.data.text,
+        tag: res.data.tag as IdeaTag,
+        capturedAt: res.data.captured_at,
+      };
+      onSaved?.(newIdea);
+      toast.success('Idea captured.');
+      setText('');
+      setSelectedTag(DEFAULT_TAG);
+      onOpenChange?.(false);
+    } catch {
+      toast.error('Failed to save idea. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleCancel = () => {
@@ -129,8 +127,8 @@ export function QuickCaptureModal({ open, onOpenChange, onSaved }: QuickCaptureM
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={!text.trim()}>
-              Capture it
+            <Button onClick={handleSave} disabled={!text.trim() || isSaving}>
+              {isSaving ? 'Saving…' : 'Capture it'}
             </Button>
           </div>
         </div>

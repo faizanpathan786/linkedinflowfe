@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { ideasAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Lightbulb, ChevronLeft, ChevronRight, Calendar, Plus } from 'lucide-react';
+import { Lightbulb, ChevronLeft, ChevronRight, Calendar, Plus, ArrowLeft } from 'lucide-react';
 import {
   format,
   startOfWeek,
@@ -59,22 +61,21 @@ const WEEKLY_GOAL = 3;
 export function WeeklyWorkflow() {
   const navigate = useNavigate();
   const { posts } = useLinkedInStore();
+  const { user } = useAuthStore();
 
   const [weekOffset, setWeekOffset] = useState(0);
   const [activeTag, setActiveTag] = useState<string>('all');
   const [ideas, setIdeas] = useState<Idea[]>([]);
 
-  // Load ideas from localStorage on mount
+  // Load ideas from API on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('linkedinflow_ideas');
-      if (raw) {
-        const parsed = JSON.parse(raw) as Idea[];
-        setIdeas(Array.isArray(parsed) ? parsed : []);
-      }
-    } catch {
-      setIdeas([]);
-    }
+    ideasAPI.getAll()
+      .then((res) => {
+        if (res.success) {
+          setIdeas(res.data.map((r) => ({ id: r.id, text: r.text, tag: r.tag, capturedAt: r.captured_at })));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Compute week boundaries
@@ -111,16 +112,22 @@ export function WeeklyWorkflow() {
   const progressPct = Math.min((scheduledThisWeek.length / WEEKLY_GOAL) * 100, 100);
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
+    <div className="flex flex-col gap-6 lg:h-full lg:overflow-hidden">
       {/* ------------------------------------------------------------------ */}
       {/* Top bar                                                              */}
       {/* ------------------------------------------------------------------ */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Weekly Workflow</h1>
-          <p className="text-sm text-gray-500 mt-0.5">30 minutes a week. Done.</p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground hover:text-foreground -ml-1"
+            onClick={() => navigate('/dashboard/ideas')}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Ideas
+          </Button>
         </div>
-
         <div className="flex items-center gap-2 flex-wrap">
           {/* Week navigation */}
           <div className="flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-1 py-1">
@@ -170,11 +177,11 @@ export function WeeklyWorkflow() {
       {/* ------------------------------------------------------------------ */}
       {/* Two-column layout                                                    */}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:flex-1 lg:grid-cols-2 lg:overflow-hidden">
         {/* ---------------------------------------------------------------- */}
         {/* Left — Ideas to post this week                                    */}
         {/* ---------------------------------------------------------------- */}
-        <Card className="flex flex-col">
+        <Card className="flex flex-col lg:overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -211,7 +218,7 @@ export function WeeklyWorkflow() {
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="lg:flex-1 lg:overflow-y-auto">
             {filteredIdeas.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
                 <Lightbulb className="h-10 w-10 text-gray-300" />
@@ -274,7 +281,7 @@ export function WeeklyWorkflow() {
         {/* ---------------------------------------------------------------- */}
         {/* Right — This week's schedule                                      */}
         {/* ---------------------------------------------------------------- */}
-        <Card className="flex flex-col">
+        <Card className="flex flex-col lg:overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -305,7 +312,7 @@ export function WeeklyWorkflow() {
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 overflow-y-auto">
+          <CardContent className="lg:flex-1 lg:overflow-y-auto">
             {scheduledThisWeek.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
                 <Calendar className="h-10 w-10 text-gray-300" />

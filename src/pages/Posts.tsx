@@ -1,4 +1,4 @@
-import { useEffect, useState, type ElementType } from 'react';
+import { useEffect, useRef, useState, type ElementType } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,10 +110,27 @@ function PostCard({
   const [publishing, setPublishing] = useState(false);
   const [retrying,   setRetrying]   = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [logReason,  setLogReason]  = useState<string | null>(null);
   const meta        = statusMeta[post.status] ?? statusMeta['draft'];
   const TypeIcon    = typeIcon[post.post_type] ?? FileText;
   const failureReason = post.status === 'failed' ? getFailureReason(post as Post) : null;
   const isPublishing  = post.status === 'publishing';
+
+  // Auto-fetch publish log error when the post itself has no failure reason
+  useEffect(() => {
+    if (post.status !== 'failed' || failureReason) return;
+    postsAPI.getLogs(post.id)
+      .then((data) => {
+        const failed = (data.logs ?? [])
+          .filter((l: any) => l.status === 'failed' || l.error_code || l.error_message)
+          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+        if (failed) {
+          const msg = [failed.error_code, failed.error_message].filter(Boolean).join(' — ');
+          if (msg) setLogReason(msg);
+        }
+      })
+      .catch(() => {});
+  }, [post.id, post.status]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -240,19 +257,14 @@ function PostCard({
           )}
         </div>
 
-        {failureReason && (
+        {post.status === 'failed' && (
           <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
             <p className="font-semibold uppercase tracking-wide text-[10px] mb-0.5">Failure reason</p>
-            <p className="leading-relaxed break-words">{failureReason}</p>
-          </div>
-        )}
-
-        {post.status === 'failed' && !failureReason && (
-          <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
-            <p className="font-semibold uppercase tracking-wide text-[10px] mb-0.5">Failure reason</p>
-            <p className="leading-relaxed break-words">
-              No failure reason was returned by the backend for this post.
-            </p>
+            {failureReason || logReason ? (
+              <p className="leading-relaxed break-words">{failureReason ?? logReason}</p>
+            ) : (
+              <p className="leading-relaxed break-words italic opacity-70">Fetching error details…</p>
+            )}
           </div>
         )}
 
@@ -375,7 +387,8 @@ function PostCard({
 
 export function Posts() {
   const { posts, setPosts, removePost } = useLinkedInStore();
-  const [isFetching,       setIsFetching]       = useState(true);
+  // Don't block the UI with skeletons if the store already has posts from a previous page load.
+  const [isFetching,       setIsFetching]       = useState(posts.length === 0);
   const [fetchError,       setFetchError]        = useState<string | null>(null);
   const [importOpen,       setImportOpen]        = useState(false);
   const [editingPost,      setEditingPost]       = useState<Post | null>(null);
@@ -394,28 +407,33 @@ export function Posts() {
   const failedCount     = posts.filter(p => p.status === 'failed').length;
   const publishingCount = posts.filter(p => (p.status as string) === 'publishing').length;
 
-  const fetchPosts = () => {
-    setIsFetching(true);
+  const fetchPosts = (silent = false) => {
+    if (!silent) setIsFetching(true);
     setFetchError(null);
     postsAPI.getPosts()
       .then(data => setPosts(data.posts ?? []))
-      .catch(() => setFetchError('Could not load posts. Check your connection and try again.'))
-      .finally(() => setIsFetching(false));
+      .catch(() => { if (!silent) setFetchError('Could not load posts. Check your connection and try again.'); })
+      .finally(() => { if (!silent) setIsFetching(false); });
   };
 
-  useEffect(() => { fetchPosts(); }, []);
+  // If store already has data, refresh silently in background — no skeletons.
+  useEffect(() => { fetchPosts(posts.length > 0); }, []);
 
-  // Silent background poll for scheduled and publishing posts
+  // Silent background poll — runs once, checks a ref so posts changes don't restart the timer.
+  const postsRef = useRef(posts);
+  useEffect(() => { postsRef.current = posts; }, [posts]);
   useEffect(() => {
-    const hasScheduled = posts.some(p => p.status === 'scheduled' || (p.status as string) === 'publishing');
-    if (!hasScheduled) return;
     const interval = setInterval(() => {
+      const hasActive = postsRef.current.some(
+        p => p.status === 'scheduled' || (p.status as string) === 'publishing'
+      );
+      if (!hasActive) return;
       postsAPI.getPosts()
         .then(data => setPosts(data.posts ?? []))
         .catch(() => {});
     }, 30_000);
     return () => clearInterval(interval);
-  }, [posts]);
+  }, []);
 
   useEffect(() => {
     if (searchParams.get('import') === '1') {
@@ -567,28 +585,9 @@ export function Posts() {
           </Button>
       </div>
 
-      {/* ── Summary stats ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Drafts',    value: draftCount,                      icon: Clock,       color: 'text-amber-600 dark:text-amber-400',   bg: 'bg-amber-500/10' },
-          { label: 'Scheduled', value: scheduledCount + publishingCount, icon: Calendar,    color: 'text-blue-600 dark:text-blue-400',     bg: 'bg-blue-500/10' },
-          { label: 'Published', value: publishedCount, icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-500/10' },
-          { label: 'Failed',    value: failedCount,    icon: XCircle,     color: 'text-rose-600 dark:text-rose-400',     bg: 'bg-rose-500/10' },
-        ].map((s) => (
-          <div key={s.label} className="metric-card flex items-center gap-3 py-3.5">
-            <div className={cn('flex items-center justify-center w-8 h-8 rounded-md shrink-0', s.bg)}>
-              <s.icon className={cn('h-4 w-4', s.color)} />
-            </div>
-            <div>
-              <p className={cn('text-xl font-bold tabular-nums', s.color)}>{s.value}</p>
-              <p className="text-[11px] text-muted-foreground font-medium text-black">{s.label}</p>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* ── Posts list ────────────────────────────────────────────── */}
-      <Card className="bg-[#f8fafc] border-[#dce6f1]">
+      <Card className="bg-white border-[#dce6f1]">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-sm font-semibold">
             <div className="icon-container-sm">
@@ -646,11 +645,11 @@ export function Posts() {
             >
               {/* Tab list */}
               <TabsList className="mb-4 flex-wrap h-auto gap-1 bg-muted/50 p-1">
-                <TabsTrigger value="all" className="text-xs gap-1.5 h-7">
+                <TabsTrigger value="all" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
                   All
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{posts.length}</Badge>
                 </TabsTrigger>
-                <TabsTrigger value="draft" className="text-xs gap-1.5 h-7">
+                <TabsTrigger value="draft" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
                   Drafts
                   {draftCount > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -658,7 +657,7 @@ export function Posts() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="scheduled" className="text-xs gap-1.5 h-7">
+                <TabsTrigger value="scheduled" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
                   Scheduled
                   {scheduledCount > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
@@ -666,13 +665,13 @@ export function Posts() {
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="published" className="text-xs gap-1.5 h-7">
+                <TabsTrigger value="published" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
                   Published
                   {publishedCount > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{publishedCount}</Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="failed" className="text-xs gap-1.5 h-7">
+                <TabsTrigger value="failed" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
                   Failed
                   {failedCount > 0 && (
                     <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">

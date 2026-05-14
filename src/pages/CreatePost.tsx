@@ -2,13 +2,11 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
   Image as ImageIcon,
   Send,
@@ -26,8 +24,10 @@ import {
   ListOrdered,
   BookMarked,
   Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { postsAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { loadQueueSettings, getNextQueueSlot } from '@/lib/queue';
@@ -40,6 +40,7 @@ import { loadTemplates, deleteTemplate, type PostTemplate } from '@/lib/template
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PostAnalyzer } from '@/components/posts/PostAnalyzer';
 import { PageTransition } from '@/components/ui/magic/page-transition';
+import { ImportModal } from '@/components/posts/ImportModal';
 
 const postSchema = z.object({
   content: z.string().min(1, 'Content is required').max(3000, 'Content must be under 3000 characters'),
@@ -70,16 +71,7 @@ const mediaTypes: { type: MediaType; icon: React.ElementType; label: string }[] 
 export function CreatePost() {
   const [searchParams] = useSearchParams();
   const scheduledDateParam = searchParams.get('scheduled_date');
-  const prefillContent = (() => {
-    const fromSession = searchParams.get('from') === 'interview'
-      ? sessionStorage.getItem('linkedinflow_composer_prefill')
-      : null;
-    if (fromSession) {
-      sessionStorage.removeItem('linkedinflow_composer_prefill');
-      return fromSession;
-    }
-    return searchParams.get('prefill');
-  })();
+  const prefillApplied = useRef(false);
 
   const DRAFT_KEY = 'linkedinflow_draft_post';
   const [draftSaved, setDraftSaved] = useState(false);
@@ -95,7 +87,14 @@ export function CreatePost() {
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
   const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
   const { addPost, linkedInStatus, posts } = useLinkedInStore();
+  const { user } = useAuthStore();
   const isLinkedInConnected = Boolean(linkedInStatus?.isConnected && !linkedInStatus?.isExpired);
+  const liProfile = linkedInStatus?.data?.profile as Record<string, string> | undefined;
+  const previewName = liProfile?.firstName
+    ? [liProfile.firstName, liProfile.lastName].filter(Boolean).join(' ')
+    : user?.name || 'Your Name';
+  const previewHeadline = liProfile?.headline || liProfile?.localizedHeadline || 'LinkedIn Member';
+  const previewAvatar = liProfile?.pictureUrl || undefined;
   const navigate = useNavigate();
 
   const queueSettings = useMemo(() => loadQueueSettings(), []);
@@ -107,6 +106,8 @@ export function CreatePost() {
 
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templates, setTemplates] = useState<PostTemplate[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
 
   const openTemplates = () => {
     setTemplates(loadTemplates());
@@ -125,6 +126,7 @@ export function CreatePost() {
     setTemplates(prev => prev.filter(t => t.id !== id));
   };
 
+
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, setValue, reset } =
     useForm<PostFormData>({
       resolver: zodResolver(postSchema),
@@ -132,7 +134,7 @@ export function CreatePost() {
         publish_now: false,
         useAI: false,
         schedule: scheduledDateParam ? true : false,
-        content: prefillContent ? decodeURIComponent(prefillContent) : '',
+        content: '',
       },
     });
 
@@ -198,6 +200,27 @@ export function CreatePost() {
         localStorage.removeItem(DRAFT_KEY);
       }
     }
+  }, []);
+
+  // Apply prefilled content from AI interview (runs once, safe with Strict Mode double-invoke)
+  useEffect(() => {
+    if (prefillApplied.current) return;
+    if (searchParams.get('from') === 'interview') {
+      const stored = sessionStorage.getItem('linkedinflow_composer_prefill');
+      if (stored) {
+        prefillApplied.current = true;
+        sessionStorage.removeItem('linkedinflow_composer_prefill');
+        setValue('content', stored);
+      }
+    } else {
+      const prefill = searchParams.get('prefill');
+      if (prefill) {
+        prefillApplied.current = true;
+        try { setValue('content', decodeURIComponent(prefill)); }
+        catch { setValue('content', prefill); }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Debounced auto-save draft
@@ -271,6 +294,9 @@ export function CreatePost() {
         toast.success(`Post scheduled for ${new Date(scheduledAt).toLocaleString()}`);
       } else if (data.publish_now) {
         toast.success('Post published to LinkedIn!');
+        if (response.post?.linkedin_post_id) {
+          setPublishedPostId(response.post.linkedin_post_id);
+        }
       } else {
         toast.success('Post saved as draft.');
       }
@@ -302,59 +328,70 @@ export function CreatePost() {
 
   return (
     <PageTransition>
-      <div className="animate-fade-in">
-        {/* LinkedIn Connection Badge */}
-        <div className="mb-4 flex justify-end">
-          <Badge
-            variant="outline"
-            className={cn('text-xs px-3 py-1 whitespace-nowrap', isLinkedInConnected ? 'badge-success' : 'bg-muted text-muted-foreground')}
-          >
-            {isLinkedInConnected
-              ? <><CheckCircle className="mr-1.5 h-3 w-3" />Connected</>
-              : <><AlertCircle className="mr-1.5 h-3 w-3" />Not connected</>}
-          </Badge>
+      <div className="flex flex-col lg:h-full lg:overflow-hidden animate-fade-in gap-3">
+
+        {/* Published banner */}
+        {publishedPostId && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 shrink-0">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
+              <span className="text-sm font-medium text-green-800">Post published to LinkedIn!</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={`https://www.linkedin.com/feed/update/${publishedPostId}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 rounded-lg bg-[#0a66c2] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#004182] transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                View on LinkedIn
+              </a>
+              <button
+                type="button"
+                onClick={() => setPublishedPostId(null)}
+                className="text-green-600 hover:text-green-800 text-lg leading-none px-1"
+                aria-label="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Top bar */}
+        <div className="flex items-center justify-end gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            {showRestoreBanner && (
+              <div className="flex items-center gap-2 rounded-lg border border-[#dce6f1] bg-[#eef3f8] px-3 py-1.5">
+                <Clock className="h-3.5 w-3.5 text-[#0a66c2] shrink-0" />
+                <span className="text-[11px] font-medium text-[#0a66c2]">Unsaved draft</span>
+                <button type="button" className="text-[11px] font-semibold text-[#0a66c2] hover:underline" onClick={restoreDraft}>Restore</button>
+                <button type="button" className="text-[11px] text-[#595959] hover:text-[#191919]" onClick={dismissDraft}>✕</button>
+              </div>
+            )}
+            <div className={cn(
+              'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold',
+              isLinkedInConnected
+                ? 'border-green-200 bg-green-50 text-green-700'
+                : 'border-amber-200 bg-amber-50 text-amber-700'
+            )}>
+              {isLinkedInConnected
+                ? <><CheckCircle className="h-3 w-3" />LinkedIn connected</>
+                : <><AlertCircle className="h-3 w-3" />Not connected</>}
+            </div>
+            {!isLinkedInConnected && (
+              <Button size="sm" onClick={() => navigate('/dashboard/linkedin-vault')}
+                className="h-7 text-xs !bg-[#0a66c2] !text-white hover:!bg-[#004182]">
+                Connect
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* LinkedIn connection alert - Compact */}
-        {!isLinkedInConnected && (
-          <div className="mb-3 flex items-center gap-2 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30">
-            <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-            <p className="flex-1 text-xs font-medium text-amber-800 dark:text-amber-300">
-              Connect LinkedIn to publish • You can schedule now
-            </p>
-            <Button size="sm" variant="default" onClick={() => navigate('/dashboard/linkedin-vault')}
-              className="shrink-0 h-7 text-xs">
-              Connect
-            </Button>
-          </div>
-        )}
-
-        {showRestoreBanner && (
-          <div className="mb-3 flex items-center gap-2 p-3 rounded-lg border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30">
-            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-            <p className="flex-1 text-xs font-medium text-blue-800 dark:text-blue-300">
-              You have an unsaved draft. Restore it?
-            </p>
-            <button
-              type="button"
-              className="text-xs font-semibold text-blue-600 hover:underline mr-2"
-              onClick={restoreDraft}
-            >
-              Restore
-            </button>
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground"
-              onClick={dismissDraft}
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* Post Analysis — Full Width at Top */}
+        {/* Post Analyzer */}
         {import.meta.env.VITE_POST_ANALYZER_ENABLED === 'true' && content && content.length >= 10 && (
-          <div className="mb-6 rounded-lg border border-border/50 bg-card p-4">
+          <div className="shrink-0 rounded-xl border border-[#e0dfdc] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
             <PostAnalyzer
               content={content}
               postType={mediaType}
@@ -362,14 +399,8 @@ export function CreatePost() {
                 const now = new Date();
                 const targetDate = new Date(now);
                 targetDate.setHours(hour, 0, 0, 0);
-
-                // If target time has already passed today, schedule for tomorrow
-                if (targetDate <= now) {
-                  targetDate.setDate(targetDate.getDate() + 1);
-                }
-
-                const isoString = targetDate.toISOString().slice(0, 16);
-                setScheduledAt(isoString);
+                if (targetDate <= now) targetDate.setDate(targetDate.getDate() + 1);
+                setScheduledAt(targetDate.toISOString().slice(0, 16));
                 setValue('schedule', true);
                 setValue('publish_now', false);
               }}
@@ -377,96 +408,94 @@ export function CreatePost() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Form - Takes 2 columns */}
-          <div className="lg:col-span-2">
-            <Card className="border-0 shadow-sm h-full">
-              <CardContent className="p-5">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                {/* AI toggle - Compact */}
-                <div className="flex items-center justify-between p-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <p className="text-xs font-semibold text-foreground">AI Generator</p>
-                  </div>
-                  <Switch
-                    id="ai-toggle"
-                    checked={useAI}
-                    onCheckedChange={(v) => setValue('useAI', v)}
-                  />
-                </div>
+        {/* Main grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 lg:flex-1 lg:overflow-hidden">
 
-                {useAI && (
-                  <Button
+          {/* ── Left: Compose ── */}
+          <div className="lg:overflow-y-auto">
+            <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden">
+
+              {/* Card header */}
+              <div className="flex items-center justify-between border-b border-[#e0dfdc] bg-[#f8fafb] px-4 py-3">
+                <p className="text-sm font-bold text-[#191919]">Compose</p>
+                <div className="flex items-center gap-2">
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
+                    onClick={() => setImportOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-[#eef3f8] hover:text-[#0a66c2] transition-colors"
+                  >
+                    Import
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openTemplates}
+                    className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-[#eef3f8] hover:text-[#0a66c2] transition-colors"
+                  >
+                    <BookMarked className="h-3 w-3" />
+                    Templates
+                  </button>
+                  <div className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1">
+                    <Sparkles className="h-3 w-3 text-[#0a66c2]" />
+                    <span className="text-[11px] font-medium text-[#595959]">AI</span>
+                    <Switch
+                      checked={useAI}
+                      onCheckedChange={(v) => setValue('useAI', v)}
+                      className="scale-75 -mr-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+
+                {/* AI generate button */}
+                {useAI && (
+                  <button
+                    type="button"
                     onClick={() => {
                       setValue('content', AI_SUGGESTIONS[Math.floor(Math.random() * AI_SUGGESTIONS.length)]);
                       toast.success('AI content generated!');
                     }}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#dce6f1] bg-[#eef3f8] py-2 text-xs font-semibold text-[#0a66c2] hover:bg-[#dce6f1] transition-colors"
                   >
-                    <Zap className="mr-1.5 h-3.5 w-3.5" />
-                    Generate suggestion
-                  </Button>
+                    <Zap className="h-3.5 w-3.5" />
+                    Generate AI suggestion
+                  </button>
                 )}
 
-                {/* Content textarea - Compact */}
+                {/* Textarea */}
                 <div className="space-y-2">
+                  <Textarea
+                    id="content"
+                    placeholder="What do you want to share with your network?"
+                    className="min-h-[140px] resize-none text-sm border-[#dce6f1] bg-[#f8fafc] focus:border-[#0a66c2] focus:ring-[#0a66c2]/20 placeholder:text-[#a0a7af]"
+                    {...register('content')}
+                  />
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="content" className="text-xs font-semibold">
-                        Your Message <span className="text-destructive">*</span>
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={openTemplates}
-                        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <BookMarked className="h-3 w-3" />
-                        Templates
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {draftSaved && (
-                        <span className="text-[11px] text-green-600 font-medium">Draft saved</span>
-                      )}
-                      <span className={cn(
-                        'text-xs',
-                        charDanger ? 'text-destructive font-bold' :
-                          charWarning ? 'text-amber-600 dark:text-amber-400 font-medium' :
-                            'text-muted-foreground'
-                      )}>
+                    {errors.content
+                      ? <p className="text-xs text-red-600">{errors.content.message}</p>
+                      : <div className="flex items-center gap-1.5">
+                          {draftSaved && <span className="text-[11px] text-green-600 font-medium">Auto-saved</span>}
+                        </div>
+                    }
+                    <div className="flex items-center gap-2 ml-auto">
+                      <div className="w-20 h-1.5 rounded-full bg-[#e8eef5] overflow-hidden">
+                        <div
+                          className={cn('h-full rounded-full transition-all', charDanger ? 'bg-red-500' : charWarning ? 'bg-amber-500' : 'bg-green-500')}
+                          style={{ width: `${Math.min(100, (charCount / 3000) * 100)}%` }}
+                        />
+                      </div>
+                      <span className={cn('text-[11px] font-medium tabular-nums', charDanger ? 'text-red-600' : charWarning ? 'text-amber-600' : 'text-[#595959]')}>
                         {charCount}/3000
                       </span>
                     </div>
                   </div>
-                  <Textarea
-                    id="content"
-                    placeholder="What's on your mind? 💡"
-                    className="min-h-24 resize-none text-sm"
-                    {...register('content')}
-                  />
-                  {/* Character count bar */}
-                  <div className="w-full h-1 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full transition-all duration-300',
-                        charDanger ? 'bg-destructive' :
-                          charWarning ? 'bg-amber-500' :
-                            'bg-green-500'
-                      )}
-                      style={{ width: `${Math.min(100, (charCount / 3000) * 100)}%` }}
-                    />
-                  </div>
-                  {errors.content && <p className="text-xs text-destructive">{errors.content.message}</p>}
                 </div>
 
-                {/* Post type selector */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold">Post Type</Label>
-                  <div className="grid grid-cols-4 gap-2">
+                {/* Media type pills */}
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#595959]">Post type</p>
+                  <div className="flex gap-2">
                     {mediaTypes.map(({ type, icon: Icon, label }) => (
                       <button
                         key={type}
@@ -477,215 +506,164 @@ export function CreatePost() {
                           if (type !== 'video') { clearVideo(); }
                         }}
                         className={cn(
-                          'flex flex-col items-center gap-2 rounded-xl border-2 p-3 text-xs font-semibold transition-all',
+                          'flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all',
                           mediaType === type
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                            : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:border-border/80',
+                            ? 'border-[#0a66c2] bg-[#eef3f8] text-black'
+                            : 'border-[#dce6f1] bg-[#f8fafc] text-black hover:border-[#0a66c2]/40 hover:bg-[#f0f4f8]'
                         )}
                       >
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-3.5 w-3.5" />
                         {label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Image upload — shown only for image type */}
+                {/* Image upload */}
                 {mediaType === 'image' && (
-                  <div className="space-y-1.5">
-                    {!uploadedImage ? (
-                      <div
-                        {...getRootProps()}
-                        className={cn(
-                          'border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors',
-                          isDragActive
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                        )}
+                  !uploadedImage ? (
+                    <div
+                      {...getRootProps()}
+                      className={cn(
+                        'rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
+                        isDragActive ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]'
+                      )}
+                    >
+                      <input {...getInputProps()} />
+                      <ImageIcon className="h-7 w-7 text-[#0a66c2] mx-auto mb-2 opacity-60" />
+                      <p className="text-sm font-medium text-[#191919]">{isDragActive ? 'Drop image here' : 'Drag & drop or click to upload'}</p>
+                      <p className="text-xs text-[#595959] mt-0.5">PNG, JPG, GIF up to 10 MB</p>
+                    </div>
+                  ) : (
+                    <div className="relative rounded-xl overflow-hidden border border-[#dce6f1]">
+                      <img src={imagePreview!} alt="Preview" className="w-full h-44 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => { setUploadedImage(null); setImagePreview(null); }}
+                        className="absolute top-2 right-2 h-6 w-6 rounded-full bg-white border border-[#dce6f1] flex items-center justify-center shadow-sm hover:bg-[#f3f2ee]"
                       >
-                        <input {...getInputProps()} />
-                        <ImageIcon className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {isDragActive ? 'Drop image here' : 'Drag & drop or click to upload'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB</p>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <img
-                          src={imagePreview!}
-                          alt="Preview"
-                          className="w-full h-44 object-cover rounded-lg border border-border"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => { setUploadedImage(null); setImagePreview(null); }}
-                          className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                        <X className="h-3 w-3 text-[#595959]" />
+                      </button>
+                    </div>
+                  )
                 )}
 
-                {/* Link URL — shown only for link type */}
+                {/* Link URL */}
                 {mediaType === 'link' && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="link_url" className="text-sm font-medium">Link URL</Label>
-                    <Input
-                      id="link_url"
-                      type="url"
-                      placeholder="https://example.com/article"
+                    <Label htmlFor="link_url" className="text-xs font-semibold text-[#374151]">Link URL</Label>
+                    <Input id="link_url" type="url" placeholder="https://example.com/article"
                       {...register('link_url')}
+                      className="h-9 !border-[#dce6f1] !bg-[#f8fafc] !text-[#191919] focus:!border-[#0a66c2]"
                     />
-                    {errors.link_url && (
-                      <p className="text-xs text-destructive">{errors.link_url.message}</p>
-                    )}
+                    {errors.link_url && <p className="text-xs text-red-600">{errors.link_url.message}</p>}
                   </div>
                 )}
 
-                {/* Video — drag-and-drop for preview + required public URL */}
+                {/* Video upload */}
                 {mediaType === 'video' && (
                   <div className="space-y-3">
-                    {/* Drop zone / local preview */}
                     {!uploadedVideo ? (
-                      <div
-                        {...getVideoRootProps()}
-                        className={cn(
-                          'border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors',
-                          isVideoDragActive
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/50 hover:bg-muted/50',
-                        )}
-                      >
-                        <input {...getVideoInputProps()} />
-                        <Video className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          {isVideoDragActive ? 'Drop video here' : 'Drag & drop or click to upload'}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          MP4, MOV, AVI, WebM up to 200 MB
-                        </p>
-                      </div>
+                      <>
+                        <div
+                          {...getVideoRootProps()}
+                          className={cn(
+                            'rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
+                            isVideoDragActive ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]'
+                          )}
+                        >
+                          <input {...getVideoInputProps()} />
+                          <Video className="h-7 w-7 text-[#0a66c2] mx-auto mb-2 opacity-60" />
+                          <p className="text-sm font-medium text-[#191919]">{isVideoDragActive ? 'Drop video here' : 'Drag & drop or click to upload'}</p>
+                          <p className="text-xs text-[#595959] mt-0.5">MP4, MOV, AVI, WebM up to 200 MB</p>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="video_url" className="text-xs font-semibold text-[#374151]">Or enter a public video URL</Label>
+                          <Input id="video_url" type="url" placeholder="https://example.com/video.mp4"
+                            {...register('video_url')}
+                            className="h-9 !border-[#dce6f1] !bg-[#f8fafc] !text-[#191919]"
+                          />
+                          {errors.video_url && <p className="text-xs text-red-600">{errors.video_url.message}</p>}
+                        </div>
+                      </>
                     ) : (
                       <div className="space-y-1.5">
-                        <div className="relative rounded-lg overflow-hidden border border-border bg-[#eef3f8]">
-                          <video
-                            src={videoObjectUrl!}
-                            controls
-                            className="w-full max-h-48 object-contain"
-                            preload="metadata"
-                          />
-                          <button
-                            type="button"
-                            onClick={clearVideo}
-                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-background/90 border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                          >
-                            <X className="h-3 w-3" />
+                        <div className="relative rounded-xl overflow-hidden border border-[#dce6f1] bg-[#f8fafc]">
+                          <video src={videoObjectUrl!} controls className="w-full max-h-48 object-contain" preload="metadata" />
+                          <button type="button" onClick={clearVideo}
+                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-white border border-[#dce6f1] flex items-center justify-center shadow-sm hover:bg-[#f3f2ee]">
+                            <X className="h-3 w-3 text-[#595959]" />
                           </button>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {uploadedVideo.name} · {(uploadedVideo.size / (1024 * 1024)).toFixed(1)} MB
-                        </p>
-                      </div>
-                    )}
-
-                    {/* URL field — only shown when no file has been dropped */}
-                    {!uploadedVideo && (
-                      <div className="space-y-1.5">
-                        <Label htmlFor="video_url" className="text-sm font-medium">
-                          Or enter a public video URL
-                        </Label>
-                        <Input
-                          id="video_url"
-                          type="url"
-                          placeholder="https://example.com/video.mp4"
-                          {...register('video_url')}
-                        />
-                        {errors.video_url && (
-                          <p className="text-xs text-destructive">{errors.video_url.message}</p>
-                        )}
+                        <p className="text-xs text-[#595959] truncate">{uploadedVideo.name} · {(uploadedVideo.size / (1024 * 1024)).toFixed(1)} MB</p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Publish / Schedule Section */}
-                <div className="space-y-3 p-4 rounded-lg border border-border/50 bg-muted/30">
-                  <h3 className="text-sm font-semibold">Publishing Options</h3>
-
-                  <div className="space-y-2">
-                    {/* Publish now option */}
-                    <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-all hover:bg-muted/50"
-                      style={{
-                        backgroundColor: publishNow && !useQueue ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                        borderColor: publishNow && !useQueue ? 'hsl(var(--primary))' : undefined,
-                      }}>
-                      <input
-                        type="radio"
-                        checked={publishNow && !schedule && !useQueue}
+                {/* Publishing options */}
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#595959]">Publishing</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Publish now */}
+                    <label className={cn(
+                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
+                      publishNow && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40',
+                      !isLinkedInConnected && 'opacity-50 cursor-not-allowed'
+                    )}>
+                      <input type="radio" checked={publishNow && !schedule && !useQueue}
                         onChange={() => { setValue('publish_now', true); setValue('schedule', false); setUseQueue(false); }}
-                        disabled={!isLinkedInConnected}
-                        className="h-4 w-4"
-                      />
-                      <Send className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">Publish now</p>
-                        <p className="text-xs text-muted-foreground">Post immediately to LinkedIn</p>
+                        disabled={!isLinkedInConnected} className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Send className="h-3 w-3 text-[#0a66c2] shrink-0" />
+                          <p className="text-xs font-semibold text-[#191919]">Publish now</p>
+                        </div>
+                        <p className="text-[10px] text-[#595959]">Post immediately</p>
                       </div>
                     </label>
 
-                    {/* Schedule option */}
-                    <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-all hover:bg-muted/50"
-                      style={{
-                        backgroundColor: schedule && !useQueue ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                        borderColor: schedule && !useQueue ? 'hsl(var(--primary))' : undefined,
-                      }}>
-                      <input
-                        type="radio"
-                        checked={schedule && !useQueue}
+                    {/* Schedule */}
+                    <label className={cn(
+                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
+                      schedule && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
+                    )}>
+                      <input type="radio" checked={schedule && !useQueue}
                         onChange={() => { setValue('schedule', true); setValue('publish_now', false); setUseQueue(false); }}
-                        className="h-4 w-4"
-                      />
-                      <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">Schedule for later</p>
-                        <p className="text-xs text-muted-foreground">Pick a date and time</p>
+                        className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Calendar className="h-3 w-3 text-[#0a66c2] shrink-0" />
+                          <p className="text-xs font-semibold text-[#191919]">Schedule</p>
+                        </div>
+                        <p className="text-[10px] text-[#595959]">Pick date & time</p>
                       </div>
                     </label>
 
-                    {/* Save as draft option */}
-                    <label className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-all hover:bg-muted/50"
-                      style={{
-                        backgroundColor: !publishNow && !schedule && !useQueue ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                        borderColor: !publishNow && !schedule && !useQueue ? 'hsl(var(--primary))' : undefined,
-                      }}>
-                      <input
-                        type="radio"
-                        checked={!publishNow && !schedule && !useQueue}
+                    {/* Save draft */}
+                    <label className={cn(
+                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
+                      !publishNow && !schedule && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
+                    )}>
+                      <input type="radio" checked={!publishNow && !schedule && !useQueue}
                         onChange={() => { setValue('publish_now', false); setValue('schedule', false); setUseQueue(false); }}
-                        className="h-4 w-4"
-                      />
-                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">Save as draft</p>
-                        <p className="text-xs text-muted-foreground">Edit later</p>
+                        className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <Clock className="h-3 w-3 text-[#0a66c2] shrink-0" />
+                          <p className="text-xs font-semibold text-[#191919]">Save draft</p>
+                        </div>
+                        <p className="text-[10px] text-[#595959]">Edit & publish later</p>
                       </div>
                     </label>
 
-                    {/* Queue option — only show if queue is enabled and has a next slot */}
+                    {/* Queue */}
                     {queueSettings.enabled && nextQueueSlot && (
-                      <label
-                        className="flex items-center gap-3 p-3 rounded-lg border border-border cursor-pointer transition-all hover:bg-muted/50"
-                        style={{
-                          backgroundColor: useQueue ? 'hsl(var(--primary) / 0.1)' : 'transparent',
-                          borderColor: useQueue ? 'hsl(var(--primary))' : undefined,
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          checked={useQueue}
+                      <label className={cn(
+                        'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
+                        useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
+                      )}>
+                        <input type="radio" checked={useQueue}
                           onChange={() => {
                             if (nextQueueSlot) {
                               const local = new Date(nextQueueSlot.getTime() - nextQueueSlot.getTimezoneOffset() * 60000);
@@ -695,141 +673,117 @@ export function CreatePost() {
                             }
                             setUseQueue(true);
                           }}
-                          className="h-4 w-4"
-                        />
-                        <ListOrdered className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">Add to queue</p>
-                          <p className="text-xs text-muted-foreground">
-                            Next slot: {format(nextQueueSlot, "EEE MMM d 'at' h:mm a")}
-                          </p>
+                          className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <ListOrdered className="h-3 w-3 text-[#0a66c2] shrink-0" />
+                            <p className="text-xs font-semibold text-[#191919]">Add to queue</p>
+                          </div>
+                          <p className="text-[10px] text-[#595959] truncate">{format(nextQueueSlot, "EEE MMM d 'at' h:mm a")}</p>
                         </div>
                       </label>
                     )}
                   </div>
 
-                  {/* Schedule datetime picker */}
+                  {/* Datetime picker */}
                   {schedule && (
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                      <Label htmlFor="scheduledAt" className="text-xs font-semibold">
-                        Pick a date and time
-                      </Label>
+                    <div className="space-y-1.5 pt-1">
+                      <Label htmlFor="scheduledAt" className="text-xs font-semibold text-[#374151]">Date & time</Label>
                       <Input
                         id="scheduledAt"
                         type="datetime-local"
                         value={scheduledAt}
                         min={(() => {
                           const d = new Date(Date.now() + 60_000);
-                          return new Date(d.getTime() - d.getTimezoneOffset() * 60_000)
-                            .toISOString()
-                            .slice(0, 16);
+                          return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
                         })()}
                         onChange={(e) => setScheduledAt(e.target.value)}
-                        className="text-sm"
+                        className="h-9 !border-[#dce6f1] !bg-[#f8fafc] !text-[#191919] text-sm"
                       />
                     </div>
                   )}
-
-                  {!isLinkedInConnected && publishNow && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/20 rounded p-2">
-                      Connect LinkedIn to publish posts. You can still schedule posts now — they'll publish once connected.
-                    </p>
-                  )}
                 </div>
 
-                <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={isSubmitting}>
+                {/* Submit */}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-10 text-sm font-semibold !bg-[#0a66c2] !text-white hover:!bg-[#004182] !border-[#0a66c2]"
+                >
                   {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                      <span>Creating…</span>
-                    </div>
+                    <><div className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating…</>
+                  ) : useQueue ? (
+                    <><ListOrdered className="mr-2 h-4 w-4" />Add to Queue</>
+                  ) : schedule ? (
+                    <><Calendar className="mr-2 h-4 w-4" />Schedule Post</>
+                  ) : publishNow ? (
+                    <><Send className="mr-2 h-4 w-4" />Publish Now</>
                   ) : (
-                    <>
-                      {useQueue
-                        ? <><ListOrdered className="mr-2 h-5 w-5" />Add to Queue</>
-                        : schedule
-                          ? <><Calendar className="mr-2 h-5 w-5" />Schedule Post</>
-                          : publishNow
-                            ? <><Send className="mr-2 h-5 w-5" />Publish Now</>
-                            : <><Clock className="mr-2 h-5 w-5" />Save as Draft</>}
-                    </>
+                    <><Clock className="mr-2 h-4 w-4" />Save as Draft</>
                   )}
                 </Button>
               </form>
-              </CardContent>
-            </Card>
+            </div>
           </div>
 
-          {/* Preview Column - Sticky */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-6 space-y-4">
-              {/* LinkedIn Preview Card */}
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">LinkedIn Preview</p>
-                      <p className="text-xs text-muted-foreground">Real-time preview</p>
-                    </div>
+          {/* ── Right: Preview ── */}
+          <div className="lg:overflow-y-auto space-y-3">
+            <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden">
+              <div className="flex items-center gap-2 border-b border-[#e0dfdc] bg-[#f8fafb] px-4 py-3">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#eef3f8] border border-[#dce6f1]">
+                  <Eye className="h-3.5 w-3.5 text-[#0a66c2]" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-[#191919]">Preview</p>
+                  <p className="text-[10px] text-[#595959]">Live LinkedIn view</p>
+                </div>
+              </div>
+              <div className="p-4">
+                {content ? (
+                  <LinkedInPreview
+                    content={content}
+                    linkUrl={mediaType === 'link' ? (linkUrl || undefined) : undefined}
+                    postType={mediaType}
+                    imagePreviewUrl={mediaType === 'image' ? (imagePreview || undefined) : undefined}
+                    videoUrl={mediaType === 'video' ? (videoObjectUrl ?? videoUrl ?? undefined) : undefined}
+                    authorName={previewName}
+                    authorHeadline={previewHeadline}
+                    authorAvatar={previewAvatar}
+                  />
+                ) : (
+                  <div className="rounded-xl border-2 border-dashed border-[#dce6f1] p-8 text-center bg-[#f8fafc]">
+                    <Eye className="h-8 w-8 text-[#0a66c2] mx-auto mb-2 opacity-25" />
+                    <p className="text-sm font-medium text-[#595959]">Start typing to preview</p>
+                    <p className="text-[11px] text-[#a0a7af] mt-0.5">Your post will appear here</p>
                   </div>
+                )}
+              </div>
+            </div>
 
-                  {content ? (
-                    <LinkedInPreview
-                      content={content}
-                      linkUrl={mediaType === 'link' ? (linkUrl || undefined) : undefined}
-                      postType={mediaType}
-                      imagePreviewUrl={mediaType === 'image' ? (imagePreview || undefined) : undefined}
-                      videoUrl={mediaType === 'video' ? (videoObjectUrl ?? videoUrl ?? undefined) : undefined}
-                    />
-                  ) : (
-                    <div className="rounded-xl border-2 border-dashed border-border p-8 text-center bg-muted/30">
-                      <Eye className="h-8 w-8 text-muted-foreground mx-auto mb-3 opacity-30" />
-                      <p className="text-sm font-medium text-muted-foreground">Start typing to see preview</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Post Stats Card */}
-              {content && (
-                <div className="p-4 rounded-xl border border-border/50 bg-muted/30 space-y-3">
-                  <h4 className="text-xs font-semibold text-foreground">Post Stats</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-background border border-border/50">
-                      <p className="text-xs text-muted-foreground">Characters</p>
-                      <p className={cn(
-                        'text-lg font-bold',
-                        charDanger ? 'text-destructive' :
-                          charWarning ? 'text-amber-600 dark:text-amber-400' :
-                            'text-green-600 dark:text-green-400'
-                      )}>
-                        {charCount}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-background border border-border/50">
-                      <p className="text-xs text-muted-foreground">Remaining</p>
-                      <p className="text-lg font-bold text-muted-foreground">
-                        {3000 - charCount}
-                      </p>
-                    </div>
+            {/* Post stats */}
+            {content && (
+              <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-4 space-y-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#595959]">Post stats</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-lg border border-[#dce6f1] bg-[#f8fafc] p-3">
+                    <p className="text-[10px] text-[#595959] mb-0.5">Characters</p>
+                    <p className={cn('text-xl font-bold leading-none', charDanger ? 'text-red-600' : charWarning ? 'text-amber-600' : 'text-green-600')}>
+                      {charCount}
+                    </p>
                   </div>
-                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        'h-full transition-all duration-300',
-                        charDanger ? 'bg-destructive' :
-                          charWarning ? 'bg-amber-500' :
-                            'bg-green-500'
-                      )}
-                      style={{ width: `${Math.min(100, (charCount / 3000) * 100)}%` }}
-                    />
+                  <div className="rounded-lg border border-[#dce6f1] bg-[#f8fafc] p-3">
+                    <p className="text-[10px] text-[#595959] mb-0.5">Remaining</p>
+                    <p className="text-xl font-bold leading-none text-[#595959]">{3000 - charCount}</p>
                   </div>
                 </div>
-              )}
-            </div>
+                <div className="h-1.5 rounded-full bg-[#e8eef5] overflow-hidden">
+                  <div
+                    className={cn('h-full rounded-full transition-all', charDanger ? 'bg-red-500' : charWarning ? 'bg-amber-500' : 'bg-green-500')}
+                    style={{ width: `${Math.min(100, (charCount / 3000) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -838,34 +792,28 @@ export function CreatePost() {
       <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-base">Saved templates</DialogTitle>
+            <DialogTitle className="text-base font-bold text-[#191919]">Saved Templates</DialogTitle>
           </DialogHeader>
           {templates.length === 0 ? (
             <div className="py-8 text-center space-y-2">
-              <BookMarked className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
-              <p className="text-sm text-muted-foreground">No templates saved yet.</p>
-              <p className="text-xs text-muted-foreground">Save any post as a template from the Posts page.</p>
+              <BookMarked className="h-8 w-8 text-[#595959] mx-auto opacity-30" />
+              <p className="text-sm text-[#595959]">No templates saved yet.</p>
+              <p className="text-xs text-[#a0a7af]">Save any post as a template from the Posts page.</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
               {templates.map(tpl => (
-                <div key={tpl.id} className="rounded-xl border border-border p-3 space-y-2">
+                <div key={tpl.id} className="rounded-xl border border-[#dce6f1] bg-[#f8fafc] p-3 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold text-foreground line-clamp-1">{tpl.name}</p>
-                    <button
-                      type="button"
-                      onClick={() => removeTemplate(tpl.id)}
-                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors"
-                      aria-label="Delete template"
-                    >
+                    <p className="text-xs font-semibold text-[#191919] line-clamp-1">{tpl.name}</p>
+                    <button type="button" onClick={() => removeTemplate(tpl.id)}
+                      className="shrink-0 text-[#595959] hover:text-red-600 transition-colors" aria-label="Delete template">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
-                    {tpl.content}
-                  </p>
-                  <Button size="sm" variant="outline" className="w-full h-7 text-xs" onClick={() => applyTemplate(tpl)}>
-                    Use this template
+                  <p className="text-xs text-[#595959] line-clamp-3 leading-relaxed">{tpl.content}</p>
+                  <Button size="sm" variant="outline" className="w-full h-7 text-xs !border-[#dce6f1] hover:!bg-[#eef3f8]" onClick={() => applyTemplate(tpl)}>
+                    Use template
                   </Button>
                 </div>
               ))}
@@ -873,6 +821,12 @@ export function CreatePost() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImportDone={() => {}}
+      />
     </PageTransition>
   );
 }

@@ -163,6 +163,26 @@ export const linkedInAPI = {
     const response = await api.delete(`/linkedin/token/${userId}`);
     return response.data;
   },
+
+  /**
+   * Fetch the LinkedIn member profile for a user.
+   * GET /linkedin/profile/:userId
+   * → { success, data: { firstName, lastName, headline, pictureUrl, vanityName, personUrn } }
+   */
+  getProfile: async (userId: string) => {
+    const response = await api.get(`/linkedin/profile/${userId}`);
+    return response.data as {
+      success: boolean;
+      data: {
+        firstName?: string;
+        lastName?: string;
+        headline?: string;
+        pictureUrl?: string;
+        vanityName?: string;
+        personUrn?: string;
+      };
+    };
+  },
 };
 
 // ── Posts ─────────────────────────────────────────────────────────────────────
@@ -186,8 +206,8 @@ export interface Post {
   content: string;
   post_type: 'text' | 'image' | 'link' | 'video';
   link_url?: string;
+  /** List view: relative path "/posts/:id/image" (requires auth). Single post: "data:image/...;base64,..." */
   image_url?: string;
-  image_base64?: string;
   image_type?: string;
   has_image?: boolean;
   has_video?: boolean;
@@ -287,6 +307,7 @@ export const postsAPI = {
       link_url?: string | null;
       post_type?: 'text' | 'image' | 'link' | 'video';
       scheduled_at?: string | null;
+      status?: 'draft' | 'scheduled';
     }
   ) => {
     const response = await api.patch(`/posts/${id}`, updates);
@@ -465,6 +486,105 @@ export const automationAPI = {
   updateSettings: async (settings: AutomationSettings) => {
     const response = await api.post('/api/automation/settings', settings);
     return response.data as { success: boolean; settings: AutomationSettings };
+  },
+};
+
+// ── Ideas ─────────────────────────────────────────────────────────────────────
+
+export interface IdeaRecord {
+  id: string;
+  user_id: string;
+  text: string;
+  tag: string;
+  captured_at: string;
+}
+
+export const ideasAPI = {
+  getAll: async () => {
+    const response = await api.get('/ideas');
+    return response.data as { success: boolean; data: IdeaRecord[] };
+  },
+  create: async (text: string, tag: string) => {
+    const response = await api.post('/ideas', { text, tag });
+    return response.data as { success: boolean; data: IdeaRecord };
+  },
+  delete: async (id: string) => {
+    const response = await api.delete(`/ideas/${id}`);
+    return response.data as { success: boolean };
+  },
+};
+
+// ── Queue Settings ────────────────────────────────────────────────────────────
+
+export const queueSettingsAPI = {
+  get: async () => {
+    const response = await api.get('/queue-settings');
+    return response.data as { success: boolean; data: { days: number[]; time: string } };
+  },
+  update: async (settings: { days: number[]; time: string }) => {
+    const response = await api.put('/queue-settings', settings);
+    return response.data as { success: boolean; data: { days: number[]; time: string } };
+  },
+};
+
+// ── Brand Voice ───────────────────────────────────────────────────────────────
+
+export const brandVoiceAPI = {
+  get: async () => {
+    const response = await api.get('/brand-voice');
+    return response.data as { success: boolean; data: { tone?: string; style?: string; examples?: string } };
+  },
+  update: async (bv: { tone?: string; style?: string; examples?: string }) => {
+    const response = await api.put('/brand-voice', bv);
+    return response.data as { success: boolean; data: { tone?: string; style?: string; examples?: string } };
+  },
+};
+
+// ── Notification Settings ─────────────────────────────────────────────────────
+
+export interface NotificationPreferences {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  postSuccess: boolean;
+  postFailure: boolean;
+  batchComplete: boolean;
+  weeklyReport: boolean;
+}
+
+export const notificationSettingsAPI = {
+  get: async () => {
+    const response = await api.get('/settings/notifications');
+    return response.data as { success: boolean; data: NotificationPreferences };
+  },
+  update: async (prefs: Partial<NotificationPreferences>) => {
+    const response = await api.put('/settings/notifications', prefs);
+    return response.data as { success: boolean; data: NotificationPreferences };
+  },
+};
+
+// ── In-App Notifications ──────────────────────────────────────────────────────
+
+export interface ApiNotification {
+  id: string;
+  type: 'post_success' | 'post_failure';
+  title: string;
+  body: string;
+  read: boolean;
+  created_at: string;
+}
+
+export const notificationsAPI = {
+  getAll: async () => {
+    const response = await api.get('/notifications');
+    return response.data as { success: boolean; unread_count: number; data: ApiNotification[] };
+  },
+  markRead: async (id: string) => {
+    const response = await api.patch(`/notifications/${id}/read`);
+    return response.data as { success: boolean; data: ApiNotification };
+  },
+  markAllRead: async () => {
+    const response = await api.patch('/notifications/read-all');
+    return response.data as { success: boolean; updated: number };
   },
 };
 

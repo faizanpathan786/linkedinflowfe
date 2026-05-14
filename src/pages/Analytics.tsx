@@ -33,6 +33,7 @@ import {
   Pie,
   Cell,
   Legend,
+  LabelList,
 } from 'recharts';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { postsAPI } from '@/lib/api';
@@ -152,6 +153,18 @@ export function Analytics() {
     });
   }, [posts, monthCount]);
 
+  // Published change vs previous month (for the last two months in the range)
+  const publishedChange = useMemo(() => {
+    if (monthlyData.length < 2) return { pct: 0, up: false };
+    const lastIdx = monthlyData.length - 1;
+    const last = monthlyData[lastIdx].published;
+    const prev = monthlyData[lastIdx - 1].published;
+    if (prev === 0) return { pct: last === 0 ? 0 : 100, up: last > prev };
+    const diff = last - prev;
+    const pct = Math.round((diff / prev) * 100);
+    return { pct: Math.abs(pct), up: diff >= 0 } as const;
+  }, [monthlyData]);
+
   // ── Best day / time to post ──────────────────────────────────────────────────
   const bestDayTime = useMemo(() => {
     const published = posts.filter(p => p.status === 'published' && p.published_at);
@@ -202,82 +215,84 @@ export function Analytics() {
   return (
     <div className="space-y-3 animate-fade-in">
 
-      {/* ── Page header ──────────────────────────────────────────── */}
-      <div className="flex items-center justify-end gap-2 shrink-0 flex-wrap">
-          {/* Date range toggle */}
-          <div className="flex items-center p-0.5 rounded-lg border border-border bg-muted/50">
-            {(['7d', '30d', '90d'] as DateRange[]).map((r) => (
-              <button
-                key={r}
-                onClick={() => setDateRange(r)}
-                className={cn(
-                  'h-7 px-3 text-xs font-medium rounded-md transition-colors',
-                  dateRange === r
-                    ? 'bg-background text-foreground shadow-[var(--shadow-xs)]'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-          <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Create post
-          </Button>
-      </div>
-
-      {/* ── Summary metrics ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Posts',  value: posts.length,  icon: MessageSquare, color: 'text-primary',                                       bg: 'bg-primary/10'       },
-          { label: 'Published',    value: publishedCount,icon: CheckCircle,   color: 'text-green-600 dark:text-green-400',                 bg: 'bg-green-500/10'     },
-          { label: 'Success Rate', value: successRate,   icon: TrendingUp,    color: 'text-primary',                                        bg: 'bg-primary/10',     suffix: '%' },
-          { label: 'Scheduled',    value: scheduledCount,icon: Calendar,      color: 'text-amber-600 dark:text-amber-400',                  bg: 'bg-amber-500/10'     },
-        ].map((s) => (
-          <div key={s.label} className="metric-card space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="section-label text-black">{s.label}</span>
-              <div className={cn('flex items-center justify-center w-7 h-7 rounded-md', s.bg)}>
-                <s.icon className={cn('h-3.5 w-3.5', s.color)} />
-              </div>
-            </div>
-            <p className={cn('text-[26px] font-bold tracking-tight tabular-nums leading-none', s.color)}>
-              {s.value}{s.suffix ?? ''}
-            </p>
-          </div>
-        ))}
-      </div>
-
       {/* ── Tabs ────────────────────────────────────────────────── */}
-      <Tabs defaultValue="overview" className="space-y-5">
-        <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
-          <TabsTrigger value="overview"  className="text-xs h-7 gap-1.5"><BarChart3 className="h-3 w-3" />Overview</TabsTrigger>
-          <TabsTrigger value="posts"     className="text-xs h-7 gap-1.5"><MessageSquare className="h-3 w-3" />Posts</TabsTrigger>
-          <TabsTrigger value="scheduled" className="text-xs h-7 gap-1.5">
-            <Calendar className="h-3 w-3" />Scheduled
-            {scheduledCount > 0 && (
-              <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0 h-4 badge-info border">
-                {scheduledCount}
-              </Badge>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="breakdown" className="text-xs h-7 gap-1.5"><Target className="h-3 w-3" />Breakdown</TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="overview" className="space-y-4">
+
+        {/* ── Top bar: tabs + controls ─────────────────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <TabsList className="flex-wrap h-auto gap-1 bg-muted/50 p-1">
+            <TabsTrigger value="overview"  className="text-xs h-7 gap-1.5 text-black data-[state=active]:text-black"><BarChart3 className="h-3 w-3" />Overview</TabsTrigger>
+            <TabsTrigger value="posts"     className="text-xs h-7 gap-1.5 text-black data-[state=active]:text-black"><MessageSquare className="h-3 w-3" />Posts</TabsTrigger>
+            <TabsTrigger value="scheduled" className="text-xs h-7 gap-1.5 text-black data-[state=active]:text-black">
+              <Calendar className="h-3 w-3" />Scheduled
+              {scheduledCount > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-[10px] px-1.5 py-0 h-4 badge-info border">
+                  {scheduledCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="breakdown" className="text-xs h-7 gap-1.5 text-black data-[state=active]:text-black"><Target className="h-3 w-3" />Breakdown</TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center p-0.5 rounded-lg border border-border bg-muted/50">
+              {(['7d', '30d', '90d'] as DateRange[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setDateRange(r)}
+                  className={cn(
+                    'h-7 px-3 text-xs font-medium rounded-md transition-colors',
+                    dateRange === r
+                      ? 'bg-background text-foreground shadow-[var(--shadow-xs)]'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Create post
+            </Button>
+          </div>
+        </div>
+
+        {/* ── Summary metrics ──────────────────────────────────── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Posts',  value: posts.length,   icon: MessageSquare, color: 'text-primary',                              bg: 'bg-primary/10'   },
+            { label: 'Published',    value: publishedCount, icon: CheckCircle,   color: 'text-green-600 dark:text-green-400',        bg: 'bg-green-500/10' },
+            { label: 'Success Rate', value: successRate,    icon: TrendingUp,    color: 'text-primary',                              bg: 'bg-primary/10',  suffix: '%' },
+            { label: 'Scheduled',    value: scheduledCount, icon: Calendar,      color: 'text-amber-600 dark:text-amber-400',        bg: 'bg-amber-500/10' },
+          ].map((s) => (
+            <div key={s.label} className="metric-card space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="section-label text-black">{s.label}</span>
+                <div className={cn('flex items-center justify-center w-7 h-7 rounded-md', s.bg)}>
+                  <s.icon className={cn('h-3.5 w-3.5', s.color)} />
+                </div>
+              </div>
+              <p className={cn('text-[26px] font-bold tracking-tight tabular-nums leading-none', s.color)}>
+                {s.value}{s.suffix ?? ''}
+              </p>
+            </div>
+          ))}
+        </div>
 
         {/* ── Overview ───────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
             {/* Activity bar chart */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/30">
+            <Card className="shadow-sm overflow-hidden">
+              <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                    <div className="icon-container-sm"><BarChart3 className="h-3.5 w-3.5" /></div>
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                    <BarChart3 className="h-3.5 w-3.5 text-[#0a66c2]" />
                     Activity
                   </CardTitle>
-                  <span className="text-xs font-medium text-muted-foreground">Last {dateRange}</span>
+                  <span className="text-[10px] font-semibold text-[#0a66c2] bg-white border border-[#dce6f1] rounded-full px-2.5 py-1">Last {dateRange}</span>
                 </div>
               </CardHeader>
               <CardContent className="pt-4">
@@ -314,129 +329,263 @@ export function Analytics() {
               </CardContent>
             </Card>
 
-            {/* Status pie */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/30">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><Target className="h-3.5 w-3.5" /></div>
+            {/* Status Distribution — redesigned for product realism */}
+            <Card className="shadow-sm overflow-hidden">
+              <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+                <CardTitle className="flex items-center gap-3 text-sm font-semibold text-black">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-white/20">
+                    <Target className="h-4 w-4 text-[#0a66c2]" />
+                  </div>
                   Status Distribution
                 </CardTitle>
               </CardHeader>
+
               <CardContent className="pt-4">
                 {posts.length === 0 || statusData.length === 0 ? (
                   <EmptyChart label="No data yet" />
                 ) : (
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie
-                        data={statusData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={48}
-                        outerRadius={75}
-                        paddingAngle={2}
-                        dataKey="value"
-                        nameKey="name"
-                      >
-                        {statusData.map((entry, i) => (
-                          <Cell key={`cell-${i}`} fill={entry.color} strokeWidth={1} stroke="hsl(var(--background))" />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value, name) => [`${value} posts`, name]}
-                        content={<ChartTooltip />}
-                      />
-                      <Legend
-                        iconType="circle"
-                        iconSize={6}
-                        formatter={(value) => <span style={{ fontSize: 11 }}>{value}</span>}
-                        wrapperStyle={{ paddingTop: 8 }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="flex items-center gap-4">
+                    {/* Pie + center summary */}
+                    <div className="w-44 flex-shrink-0">
+                      <ResponsiveContainer width="100%" height={160}>
+                        <PieChart>
+                          <Pie
+                            data={statusData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={44}
+                            outerRadius={70}
+                            paddingAngle={2}
+                            dataKey="value"
+                            nameKey="name"
+                          >
+                            {statusData.map((entry, i) => (
+                              <Cell key={`cell-${i}`} fill={entry.color} strokeWidth={1} stroke="#ffffff" />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+
+                      <div className="-mt-24 text-center">
+                        <p className="text-2xl font-bold text-gray-900 tabular-nums">{posts.length}</p>
+                        <p className="text-[12px] text-gray-500">Total posts</p>
+                      </div>
+                    </div>
+
+                    {/* Legend with counts and percent bars */}
+                    <div className="flex-1">
+                      <div className="grid gap-3">
+                        {statusData.map((s) => {
+                          const pct = Math.round((s.value / (posts.length || 1)) * 100);
+                          return (
+                            <div key={s.name} className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                                  <p className="text-xs text-gray-500">{s.value} posts</p>
+                                </div>
+                              </div>
+
+                              <div className="w-32">
+                                <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="absolute left-0 top-0 h-full rounded-full" style={{ width: `${pct}%`, background: s.color }} />
+                                </div>
+                                <div className="text-[11px] text-gray-500 text-right mt-1">{pct}%</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
           </div>
 
           {/* Monthly trend */}
-          <Card className="shadow-sm">
-            <CardHeader className="pb-3 border-b border-border/30">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><TrendingUp className="h-3.5 w-3.5" /></div>
-                  Monthly Trend
-                </CardTitle>
-                <span className="text-xs font-medium text-muted-foreground">Last {monthCount} month{monthCount > 1 ? 's' : ''}</span>
+          <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+            {/* Header */}
+            <div className="px-5 pt-4 pb-3.5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0a66c2]/10">
+                  <TrendingUp className="h-4 w-4 text-[#0a66c2]" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-gray-900">Monthly Trend</p>
+                  <p className="text-[11px] text-gray-400 leading-none mt-0.5">Posts created vs published per month</p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="pt-4">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0a66c2] bg-[#0a66c2]/8 px-2.5 py-1 rounded-full">
+                Last {monthCount}mo
+              </span>
+            </div>
+
+            {/* Summary stats */}
+            <div className="grid grid-cols-3 divide-x divide-gray-100 border-b border-gray-100">
+              <div className="px-4 py-3 text-center">
+                <p className="text-2xl font-bold tabular-nums leading-none text-gray-800">{monthlyData.reduce((s, m) => s + m.total, 0)}</p>
+                <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#94a3b8' }} />
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Total Created</p>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <p className="text-2xl font-bold tabular-nums leading-none text-[#0a66c2]">{monthlyData.reduce((s, m) => s + m.published, 0)}</p>
+                  <span className={cn('inline-flex items-center text-sm font-medium px-2 py-0.5 rounded-full', publishedChange.up ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700')}>
+                    {publishedChange.up ? '▲' : '▼'} {publishedChange.pct}%
+                  </span>
+                </div>
+                <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#0a66c2' }} />
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Published</p>
+                </div>
+              </div>
+
+              <div className="px-4 py-3 text-center">
+                <p className="text-2xl font-bold tabular-nums leading-none text-emerald-600">{monthlyData.length ? Math.round(monthlyData.reduce((s, m) => s + m.published, 0) / monthlyData.length) : 0}</p>
+                <div className="flex items-center justify-center gap-1.5 mt-1.5">
+                  <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: '#10b981' }} />
+                  <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Avg / Month</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="px-4 pt-3 pb-2">
               {posts.length === 0 ? (
                 <EmptyChart label="No posts yet" />
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={monthlyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                  <ResponsiveContainer width="100%" height={140}>
+                    <BarChart data={monthlyData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }} barCategoryGap="34%">
+                      <defs>
+                        <linearGradient id="createdGrad" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#eef6ff" />
+                          <stop offset="100%" stopColor="#e2e8f0" />
+                        </linearGradient>
+                        <linearGradient id="publishedGrad" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="0%" stopColor="#0a66c2" stopOpacity={0.95} />
+                          <stop offset="100%" stopColor="#0a66c2" stopOpacity={0.75} />
+                        </linearGradient>
+                      </defs>
+
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                      <XAxis
-                        dataKey="name"
-                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.6 }} />
-                      <Bar dataKey="total"     name="Created"   fill={designSystem.colors.textMuted} radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="published" name="Published" fill={designSystem.colors.success} radius={[3, 3, 0, 0]} />
+                      <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<ChartTooltip />} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }} />
+
+                      <Bar dataKey="total" name="Created" fill="url(#createdGrad)" radius={[6, 6, 0, 0]} barSize={18} />
+                      <Bar dataKey="published" name="Published" fill="url(#publishedGrad)" radius={[6, 6, 0, 0]} barSize={12}>
+                        <LabelList dataKey="published" position="top" content={({ x, y, value }: any) => (
+                          value > 0 ? (
+                            <text x={x} y={y - 6} textAnchor="middle" fill="#0f172a" fontSize={10} fontWeight={600}>{value}</text>
+                          ) : null
+                        )} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  <div className="flex gap-3 mt-3 pl-1">
-                    <LegendDot color={designSystem.colors.textMuted} label="Created" />
-                    <LegendDot color={designSystem.colors.success} label="Published" />
-                  </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-2.5 bg-[#f8fafb] border-t border-gray-100 flex items-center gap-4">
+              <LegendDot color="#e2e8f0" label="Created" />
+              <LegendDot color="#0a66c2" label="Published" />
+            </div>
+          </div>
 
           {bestDayTime && (
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/30">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><TrendingUp className="h-3.5 w-3.5" /></div>
-                  Best Time to Post
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-xl border border-border bg-muted/30 p-4 text-center space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Best Day</p>
-                    <p className="text-2xl font-bold text-foreground">{bestDayTime.day}</p>
-                    <p className="text-xs text-muted-foreground">{bestDayTime.dayCount} post{bestDayTime.dayCount !== 1 ? 's' : ''} published</p>
+            <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-sm bg-white">
+              {/* Header */}
+              <div className="px-5 pt-5 pb-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#0a66c2]/10">
+                    <TrendingUp className="h-4 w-4 text-[#0a66c2]" />
                   </div>
-                  <div className="rounded-xl border border-border bg-muted/30 p-4 text-center space-y-1">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Best Hour</p>
-                    <p className="text-2xl font-bold text-foreground">{bestDayTime.hourLabel}</p>
-                    <p className="text-xs text-muted-foreground">{bestDayTime.hourCount} post{bestDayTime.hourCount !== 1 ? 's' : ''} published</p>
+                  <div>
+                    <p className="text-[13px] font-semibold text-gray-900">Best Time to Post</p>
+                    <p className="text-[11px] text-gray-400 leading-none mt-0.5">Derived from your publish history</p>
                   </div>
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-3 text-center">Based on your {posts.filter(p => p.status === 'published' && p.published_at).length} published posts</p>
-              </CardContent>
-            </Card>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-[#0a66c2] bg-[#0a66c2]/8 px-2.5 py-1 rounded-full">
+                  AI Insight
+                </span>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 divide-x divide-gray-100">
+                {/* Best Day */}
+                <div className="px-5 py-5 space-y-3">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Best Day</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-gray-900 leading-none">{bestDayTime.day}</p>
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-[#0a66c2]" />
+                      <p className="text-[11px] text-gray-500">
+                        {bestDayTime.dayCount} post{bestDayTime.dayCount !== 1 ? 's' : ''} published
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1 w-full rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#0a66c2]"
+                      style={{ width: `${Math.min(100, (bestDayTime.dayCount / posts.filter(p => p.status === 'published' && p.published_at).length) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Best Hour */}
+                <div className="px-5 py-5 space-y-3">
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-gray-400" />
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Best Hour</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-gray-900 leading-none">{bestDayTime.hourLabel}</p>
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <p className="text-[11px] text-gray-500">
+                        {bestDayTime.hourCount} post{bestDayTime.hourCount !== 1 ? 's' : ''} published
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-1 w-full rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500"
+                      style={{ width: `${Math.min(100, (bestDayTime.hourCount / posts.filter(p => p.status === 'published' && p.published_at).length) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-5 py-3 bg-[#f8fafb] border-t border-gray-100 flex items-center justify-between">
+                <p className="text-[11px] text-gray-400">
+                  Based on <span className="font-semibold text-gray-600">{posts.filter(p => p.status === 'published' && p.published_at).length} published posts</span>
+                </p>
+                <div className="flex items-center gap-1 text-[11px] text-[#0a66c2] font-medium">
+                  <TrendingUp className="h-3 w-3" />
+                  Peak engagement window
+                </div>
+              </div>
+            </div>
           )}
         </TabsContent>
 
         {/* ── Posts ──────────────────────────────────────────────── */}
         <TabsContent value="posts">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <div className="icon-container-sm"><MessageSquare className="h-3.5 w-3.5" /></div>
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                <MessageSquare className="h-3.5 w-3.5 text-[#0a66c2]" />
                 Recent Posts
               </CardTitle>
             </CardHeader>
@@ -489,10 +638,10 @@ export function Analytics() {
           </Card>
 
           {topPublishedPosts.length > 0 && (
-            <Card className="mt-4">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><CheckCircle className="h-3.5 w-3.5" /></div>
+            <Card className="mt-4 overflow-hidden">
+              <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                  <CheckCircle className="h-3.5 w-3.5 text-[#0a66c2]" />
                   Published Posts
                 </CardTitle>
               </CardHeader>
@@ -527,10 +676,10 @@ export function Analytics() {
 
         {/* ── Scheduled ──────────────────────────────────────────── */}
         <TabsContent value="scheduled">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <div className="icon-container-sm"><Calendar className="h-3.5 w-3.5" /></div>
+          <Card className="overflow-hidden">
+            <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                <Calendar className="h-3.5 w-3.5 text-[#0a66c2]" />
                 Upcoming Queue
               </CardTitle>
             </CardHeader>
@@ -597,10 +746,10 @@ export function Analytics() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
             {/* Status bars - Beautiful & Minimal */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/30">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><Target className="h-3.5 w-3.5" /></div>
+            <Card className="shadow-sm overflow-hidden">
+              <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                  <Target className="h-3.5 w-3.5 text-[#0a66c2]" />
                   By Status
                 </CardTitle>
               </CardHeader>
@@ -644,10 +793,10 @@ export function Analytics() {
             </Card>
 
             {/* Type breakdown - Beautiful & Minimal */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 border-b border-border/30">
-                <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                  <div className="icon-container-sm"><FileText className="h-3.5 w-3.5" /></div>
+            <Card className="shadow-sm overflow-hidden">
+              <CardHeader className="pb-3 bg-[#f8fafb] border-b border-gray-200">
+                <CardTitle className="flex items-center gap-2 text-sm font-semibold text-black">
+                  <FileText className="h-3.5 w-3.5 text-[#0a66c2]" />
                   By Content Type
                 </CardTitle>
               </CardHeader>

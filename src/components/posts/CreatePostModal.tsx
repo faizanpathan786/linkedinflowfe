@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { LinkedInPreview } from '@/components/posts/LinkedInPreview';
 import { postsAPI } from '@/lib/api';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -47,7 +48,14 @@ interface CreatePostModalProps {
 }
 
 export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
-  const { addPost } = useLinkedInStore();
+  const { addPost, linkedInStatus } = useLinkedInStore();
+  const { user } = useAuthStore();
+  const liProfile = linkedInStatus?.data?.profile as Record<string, string> | undefined;
+  const previewName = liProfile?.firstName
+    ? [liProfile.firstName, liProfile.lastName].filter(Boolean).join(' ')
+    : user?.name || 'Your Name';
+  const previewHeadline = liProfile?.headline || liProfile?.localizedHeadline || 'LinkedIn Member';
+  const previewAvatar = liProfile?.pictureUrl || undefined;
 
   const [postType,     setPostType]     = useState<PostType>('text');
   const [content,      setContent]      = useState('');
@@ -327,6 +335,9 @@ export function CreatePostModal({ open, onOpenChange }: CreatePostModalProps) {
                 linkUrl={previewLinkUrl}
                 postType={postType}
                 imagePreviewUrl={imagePreview || undefined}
+                authorName={previewName}
+                authorHeadline={previewHeadline}
+                authorAvatar={previewAvatar}
               />
             </div>
           </div>

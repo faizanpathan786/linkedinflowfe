@@ -147,7 +147,7 @@ export function LoginForm() {
           {/* Footer */}
           <div className="mt-8 flex flex-wrap justify-center gap-x-3 gap-y-1">
             {footerLinks.map((item) => (
-                <Link key={item} to="#" className="text-[11px] text-[#86888a] hover:text-[#595959] hover:underline">
+              <Link key={item} to="#" className="text-[11px] text-[#86888a] hover:text-[#595959] hover:underline">
                 {item}
               </Link>
             ))}

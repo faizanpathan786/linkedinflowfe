@@ -10,6 +10,7 @@ interface LinkedInPreviewProps {
   videoUrl?: string;
   authorName?: string;
   authorHeadline?: string;
+  authorAvatar?: string;
 }
 
 /** Colorize #hashtags and @mentions in post content */
@@ -44,6 +45,7 @@ export function LinkedInPreview({
   videoUrl,
   authorName = 'Your Name',
   authorHeadline = 'LinkedIn Member',
+  authorAvatar,
 }: LinkedInPreviewProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -60,7 +62,23 @@ export function LinkedInPreview({
       {/* Author row */}
       <div className="flex items-start gap-3 px-4 pt-3 pb-2">
         {/* Avatar */}
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0a66c2] to-[#0d8ecf] flex items-center justify-center text-white font-bold text-lg shrink-0 select-none">
+        {authorAvatar ? (
+          <img
+            src={authorAvatar}
+            alt={authorName}
+            className="w-12 h-12 rounded-full shrink-0 object-cover"
+            onError={(e) => {
+              const img = e.target as HTMLImageElement;
+              img.style.display = 'none';
+              const fallback = img.nextElementSibling as HTMLElement | null;
+              if (fallback) fallback.style.display = 'flex';
+            }}
+          />
+        ) : null}
+        <div
+          className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0a66c2] to-[#0d8ecf] flex items-center justify-center text-white font-bold text-lg shrink-0 select-none"
+          style={{ display: authorAvatar ? 'none' : 'flex' }}
+        >
           {authorName.charAt(0).toUpperCase()}
         </div>
 

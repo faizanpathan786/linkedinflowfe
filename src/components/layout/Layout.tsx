@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { CreatePostModal } from '@/components/posts/CreatePostModal';
@@ -28,21 +28,6 @@ export function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const { isCreatePostOpen, closeCreatePost } = useLinkedInStore();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || (e.target as HTMLElement).isContentEditable) return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === 'n') navigate('/dashboard/create-post');
-      if (e.key === 'c') setCaptureOpen(true);
-      if (e.key === 'i') navigate('/dashboard/ideas');
-      if (e.key === 'p') navigate('/dashboard/posts');
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [navigate]);
 
   return (
     <div className="h-screen overflow-hidden dashboard-shell">
@@ -56,7 +41,7 @@ export function Layout() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent transition-all duration-200 ease-in-out">
           <Header onMenuClick={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto bg-transparent">
-            <div className="w-full p-4 lg:p-7">
+            <div className="w-full h-full p-4 lg:p-7">
               <Outlet />
             </div>
           </main>
