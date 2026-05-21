@@ -14,7 +14,6 @@ import {
   X,
   Clock,
   Sparkles,
-  Zap,
   CheckCircle,
   AlertCircle,
   Calendar,
@@ -25,9 +24,12 @@ import {
   BookMarked,
   Trash2,
   ExternalLink,
+  RotateCcw,
+  Wand2,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useDataStore } from '@/store/useDataStore';
 import { postsAPI } from '@/lib/api';
 import { format } from 'date-fns';
 import { loadQueueSettings, getNextQueueSlot } from '@/lib/queue';
@@ -41,6 +43,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PostAnalyzer } from '@/components/posts/PostAnalyzer';
 import { PageTransition } from '@/components/ui/magic/page-transition';
 import { ImportModal } from '@/components/posts/ImportModal';
+import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
 
 const postSchema = z.object({
   content: z.string().min(1, 'Content is required').max(3000, 'Content must be under 3000 characters'),
@@ -53,11 +56,6 @@ const postSchema = z.object({
 
 type PostFormData = z.infer<typeof postSchema>;
 
-const AI_SUGGESTIONS = [
-  '🚀 Excited to share our latest innovation in the LinkedIn automation space! The future of professional networking is here.',
-  '💡 Just finished an amazing project combining AI and social media automation. Can\'t wait to see the impact!',
-  '🎯 Consistency in LinkedIn posting can increase your reach by up to 300%. Here\'s how we\'re making it easier...',
-];
 
 type MediaType = 'text' | 'image' | 'link' | 'video';
 
@@ -88,6 +86,10 @@ export function CreatePost() {
   const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
   const { addPost, linkedInStatus, posts } = useLinkedInStore();
   const { user } = useAuthStore();
+  const { brandVoice } = useDataStore();
+
+  const [isRephrasing, setIsRephrasing] = useState(false);
+  const [originalContent, setOriginalContent] = useState<string | null>(null);
   const isLinkedInConnected = Boolean(linkedInStatus?.isConnected && !linkedInStatus?.isExpired);
   const liProfile = linkedInStatus?.data?.profile as Record<string, string> | undefined;
   const previewName = liProfile?.firstName
@@ -326,6 +328,12 @@ export function CreatePost() {
   const linkUrl = watch('link_url');
   const videoUrl = watch('video_url');
 
+  const linkedInStatusKnown = linkedInStatus !== null;
+
+  if (linkedInStatusKnown && !isLinkedInConnected) {
+    return <LinkedInGateModal onDismiss={() => navigate('/dashboard')} />;
+  }
+
   return (
     <PageTransition>
       <div className="flex flex-col lg:h-full lg:overflow-hidden animate-fade-in gap-3">
@@ -360,33 +368,44 @@ export function CreatePost() {
         )}
 
         {/* Top bar */}
-        <div className="flex items-center justify-end gap-3 shrink-0">
-          <div className="flex items-center gap-2">
-            {showRestoreBanner && (
-              <div className="flex items-center gap-2 rounded-lg border border-[#dce6f1] bg-[#eef3f8] px-3 py-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#0a66c2] shrink-0" />
-                <span className="text-[11px] font-medium text-[#0a66c2]">Unsaved draft</span>
-                <button type="button" className="text-[11px] font-semibold text-[#0a66c2] hover:underline" onClick={restoreDraft}>Restore</button>
-                <button type="button" className="text-[11px] text-[#595959] hover:text-[#191919]" onClick={dismissDraft}>✕</button>
-              </div>
-            )}
-            <div className={cn(
-              'flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold',
-              isLinkedInConnected
-                ? 'border-green-200 bg-green-50 text-green-700'
-                : 'border-amber-200 bg-amber-50 text-amber-700'
-            )}>
-              {isLinkedInConnected
-                ? <><CheckCircle className="h-3 w-3" />LinkedIn connected</>
-                : <><AlertCircle className="h-3 w-3" />Not connected</>}
+        <div className="flex items-center justify-end gap-2 shrink-0 flex-wrap">
+          {showRestoreBanner && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-[#eff6ff] px-3 py-1.5">
+              <Clock className="h-3.5 w-3.5 text-[#0a66c2] shrink-0" />
+              <span className="text-[11px] font-medium text-[#0a66c2]">Unsaved draft</span>
+              <button type="button" className="text-[11px] font-semibold text-[#0a66c2] hover:underline" onClick={restoreDraft}>Restore</button>
+              <button type="button" className="text-[11px] text-[#9ca3af] hover:text-[#374151] ml-0.5" onClick={dismissDraft}>✕</button>
             </div>
-            {!isLinkedInConnected && (
+          )}
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="h-8 flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-3 text-[12px] font-medium text-[#374151] hover:bg-[#f8f9fb] transition-colors"
+          >
+            Import
+          </button>
+          <button
+            type="button"
+            onClick={openTemplates}
+            className="h-8 flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-3 text-[12px] font-medium text-[#374151] hover:bg-[#f8f9fb] transition-colors"
+          >
+            <BookMarked className="h-3.5 w-3.5" /> Templates
+          </button>
+          {isLinkedInConnected ? (
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shrink-0">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> LinkedIn connected
+            </span>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+                <AlertCircle className="h-3 w-3" /> Not connected
+              </span>
               <Button size="sm" onClick={() => navigate('/dashboard/linkedin-vault')}
-                className="h-7 text-xs !bg-[#0a66c2] !text-white hover:!bg-[#004182]">
+                className="h-8 text-[12px] rounded-lg bg-[#0a66c2] hover:bg-[#0958a8]">
                 Connect
               </Button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Post Analyzer */}
@@ -416,52 +435,21 @@ export function CreatePost() {
             <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden">
 
               {/* Card header */}
-              <div className="flex items-center justify-between border-b border-[#e0dfdc] bg-[#f8fafb] px-4 py-3">
-                <p className="text-sm font-bold text-[#191919]">Compose</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setImportOpen(true)}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-[#eef3f8] hover:text-[#0a66c2] transition-colors"
-                  >
-                    Import
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openTemplates}
-                    className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1 text-[11px] font-medium text-black hover:bg-[#eef3f8] hover:text-[#0a66c2] transition-colors"
-                  >
-                    <BookMarked className="h-3 w-3" />
-                    Templates
-                  </button>
-                  <div className="flex items-center gap-1.5 rounded-lg border border-[#dce6f1] bg-white px-2.5 py-1">
-                    <Sparkles className="h-3 w-3 text-[#0a66c2]" />
-                    <span className="text-[11px] font-medium text-[#595959]">AI</span>
-                    <Switch
-                      checked={useAI}
-                      onCheckedChange={(v) => setValue('useAI', v)}
-                      className="scale-75 -mr-1"
-                    />
-                  </div>
+              <div className="flex items-center justify-between border-b border-[#e8eaed] px-4 py-3">
+                <p className="text-[13px] font-semibold text-[#111827]">Compose</p>
+                <div className="flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-[#f8f9fb] px-2.5 py-1 cursor-pointer"
+                  onClick={() => setValue('useAI', !useAI)}>
+                  <Sparkles className={cn('h-3.5 w-3.5 transition-colors', useAI ? 'text-[#0a66c2]' : 'text-[#9ca3af]')} />
+                  <span className={cn('text-[11px] font-medium transition-colors', useAI ? 'text-[#0a66c2]' : 'text-[#9ca3af]')}>AI assist</span>
+                  <Switch
+                    checked={useAI}
+                    onCheckedChange={(v) => setValue('useAI', v)}
+                    className="scale-75 -mr-1"
+                  />
                 </div>
               </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
-
-                {/* AI generate button */}
-                {useAI && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setValue('content', AI_SUGGESTIONS[Math.floor(Math.random() * AI_SUGGESTIONS.length)]);
-                      toast.success('AI content generated!');
-                    }}
-                    className="w-full flex items-center justify-center gap-2 rounded-lg border border-[#dce6f1] bg-[#eef3f8] py-2 text-xs font-semibold text-[#0a66c2] hover:bg-[#dce6f1] transition-colors"
-                  >
-                    <Zap className="h-3.5 w-3.5" />
-                    Generate AI suggestion
-                  </button>
-                )}
 
                 {/* Textarea */}
                 <div className="space-y-2">
@@ -471,6 +459,72 @@ export function CreatePost() {
                     className="min-h-[140px] resize-none text-sm border-[#dce6f1] bg-[#f8fafc] focus:border-[#0a66c2] focus:ring-[#0a66c2]/20 placeholder:text-[#a0a7af]"
                     {...register('content')}
                   />
+
+                  {/* AI Rephrase bar — shown when AI assist is ON */}
+                  {useAI && (
+                    <div className="flex items-center gap-2 rounded-lg border border-[#dce6f1] bg-[#f0f4ff] px-3 py-2">
+                      <Wand2 className="h-3.5 w-3.5 text-[#0a66c2] shrink-0" />
+                      <span className="text-[11px] text-[#374151] flex-1">
+                        {isRephrasing ? 'Rephrasing…' : 'AI will rewrite your caption as a professional LinkedIn post'}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        {originalContent !== null && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setValue('content', originalContent);
+                              setOriginalContent(null);
+                            }}
+                            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-[#595959] hover:bg-[#e8eaed] transition-colors"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Undo
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={isRephrasing || !content || content.length < 10}
+                          onClick={async () => {
+                            if (!content || content.length < 10) return;
+                            setIsRephrasing(true);
+                            setOriginalContent(content);
+                            try {
+                              const res = await postsAPI.rephrase({
+                                content,
+                                brand_voice: brandVoice ?? undefined,
+                              });
+                              if (res.success && res.content) {
+                                setValue('content', res.content);
+                                toast.success('Caption rephrased professionally!');
+                              } else {
+                                setOriginalContent(null);
+                                toast.error('Rephrase failed — try again.');
+                              }
+                            } catch {
+                              setOriginalContent(null);
+                              toast.error('Rephrase failed — try again.');
+                            } finally {
+                              setIsRephrasing(false);
+                            }
+                          }}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                            isRephrasing || !content || content.length < 10
+                              ? 'bg-[#0a66c2]/40 text-white cursor-not-allowed'
+                              : 'bg-[#0a66c2] text-white hover:bg-[#004182]'
+                          )}
+                        >
+                          {isRephrasing ? (
+                            <div className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3 w-3" />
+                          )}
+                          {isRephrasing ? 'Working…' : 'Rephrase'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between">
                     {errors.content
                       ? <p className="text-xs text-red-600">{errors.content.message}</p>
@@ -729,14 +783,9 @@ export function CreatePost() {
           {/* ── Right: Preview ── */}
           <div className="lg:overflow-y-auto space-y-3">
             <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-[#e0dfdc] bg-[#f8fafb] px-4 py-3">
-                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#eef3f8] border border-[#dce6f1]">
-                  <Eye className="h-3.5 w-3.5 text-[#0a66c2]" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-[#191919]">Preview</p>
-                  <p className="text-[10px] text-[#595959]">Live LinkedIn view</p>
-                </div>
+              <div className="flex items-center justify-between border-b border-[#e8eaed] px-4 py-3">
+                <p className="text-[13px] font-semibold text-[#111827]">Preview</p>
+                <span className="text-[11px] text-[#9ca3af]">Live LinkedIn view</span>
               </div>
               <div className="p-4">
                 {content ? (
