@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Post } from '@/lib/api';
+import type { Post, IdeaRecord } from '@/lib/api';
 
 export interface AppNotification {
   id: string;
@@ -27,6 +27,7 @@ interface LinkedInStatus {
 interface LinkedInState {
   linkedInStatus: LinkedInStatus | null;
   posts: Post[];
+  ideas: IdeaRecord[];
   notifications: AppNotification[];
   isLoading: boolean;
   isCreatePostOpen: boolean;
@@ -38,6 +39,10 @@ interface LinkedInState {
   setPosts: (posts: Post[]) => void;
   addPost: (post: Post) => void;
   removePost: (id: string) => void;
+  // Ideas
+  setIdeas: (ideas: IdeaRecord[]) => void;
+  addIdea: (idea: IdeaRecord) => void;
+  removeIdea: (id: string) => void;
   addNotification: (notification: Omit<AppNotification, 'id' | 'createdAt' | 'read'> & { read?: boolean }) => void;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
@@ -102,13 +107,14 @@ function pushNotificationsForTransitions(previousPosts: Post[], nextPosts: Post[
 export const useLinkedInStore = create<LinkedInState>((set) => ({
   linkedInStatus: null,
   posts: [],
+  ideas: [],
   notifications: [],
   isLoading: false,
   isCreatePostOpen: false,
   hasInitializedPosts: false,
 
   setLinkedInStatus: (status) => set({ linkedInStatus: status }),
-  clearLinkedInStatus: () => set({ linkedInStatus: null }),
+  clearLinkedInStatus: () => set({ linkedInStatus: { isConnected: false, isExpired: false } }),
 
   setPosts: (posts) => set((state) => {
     if (!state.hasInitializedPosts) {
@@ -136,6 +142,10 @@ export const useLinkedInStore = create<LinkedInState>((set) => ({
     };
   }),
   removePost: (id) => set((state) => ({ posts: state.posts.filter((p) => p.id !== id) })),
+
+  setIdeas: (ideas) => set({ ideas }),
+  addIdea: (idea) => set((state) => ({ ideas: [idea, ...state.ideas] })),
+  removeIdea: (id) => set((state) => ({ ideas: state.ideas.filter((i) => i.id !== id) })),
   addNotification: (notification) => set((state) => ({
     notifications: [{
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
