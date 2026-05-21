@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
@@ -64,7 +64,7 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
     const itemPath = item.href.split('?')[0];
     const isActive = location.pathname === itemPath;
 
-    const handleClick = (e: React.MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (item.href === '/dashboard/create-post' && linkedInStatus !== null && !isLinkedInConnected) {
         e.preventDefault();
         setShowGate(true);
