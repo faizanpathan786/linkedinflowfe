@@ -22,6 +22,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
+import { useLinkedInOAuth } from '@/hooks/useLinkedInOAuth';
+import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
 import { ideasAPI } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { NumberTicker } from '@/components/ui/magic/number-ticker';
@@ -120,6 +122,16 @@ export function Dashboard() {
   );
 
   const isLinkedInConnected = Boolean(linkedInStatus?.isConnected && !linkedInStatus?.isExpired);
+  const { connect, isLoading: connectLoading } = useLinkedInOAuth();
+  const [showGate, setShowGate] = useState(false);
+
+  const goToCreatePost = () => {
+    if (linkedInStatus !== null && !isLinkedInConnected) {
+      setShowGate(true);
+    } else {
+      navigate('/dashboard/create-post');
+    }
+  };
 
   const fetchPosts = () => {
     setIsLoading(true);
@@ -289,6 +301,7 @@ export function Dashboard() {
 
   return (
     <div className="space-y-3 animate-fade-in">
+      {showGate && <LinkedInGateModal onDismiss={() => setShowGate(false)} />}
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         <div className="hidden sm:flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-2 text-xs text-muted-foreground shadow-sm">
           <CalendarDays className="h-3.5 w-3.5" />
@@ -298,7 +311,7 @@ export function Dashboard() {
           <CalendarDays className="h-3.5 w-3.5 sm:mr-1.5" />
           <span className="hidden sm:inline">Calendar</span>
         </Button>
-        <Button size="sm" onClick={() => navigate("/dashboard/create-post")}>
+        <Button size="sm" onClick={goToCreatePost}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           New post
         </Button>
@@ -324,7 +337,7 @@ export function Dashboard() {
             <p className="text-xs text-muted-foreground mt-1">Create your first post to get started. You can write, schedule, or bulk import posts.</p>
           </div>
           <div className="flex items-center justify-center gap-2 pt-1">
-            <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
+            <Button size="sm" onClick={goToCreatePost}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Create your first post
             </Button>
@@ -349,7 +362,8 @@ export function Dashboard() {
           <Button
             size="sm"
             className="shrink-0"
-            onClick={() => navigate('/dashboard/linkedin-vault')}
+            onClick={connect}
+            disabled={connectLoading}
           >
             Connect LinkedIn
           </Button>
@@ -512,7 +526,7 @@ export function Dashboard() {
                     <p className="text-sm font-medium text-foreground">No posts yet</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">Create your first post to start building your audience.</p>
                   </div>
-                  <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
+                  <Button size="sm" onClick={goToCreatePost}>
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Create your first post
                   </Button>
