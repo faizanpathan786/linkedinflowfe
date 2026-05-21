@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from "react";
+﻿import { useRef, useState, useEffect } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,53 +13,7 @@ const perks = [
   { icon: CheckCircle2,  label: "No sales pressure, ever"       },
 ];
 
-const STATS = [
-  { value: 2000, suffix: "+", label: "Professionals" },
-  { value: 24,   suffix: "h", label: "Avg. response"  },
-  { value: 98,   suffix: "%", label: "Satisfaction"   },
-];
 
-function CountUp({ to, suffix }: { to: number; suffix: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: false, amount: 0 });
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) { setCount(0); return; }
-    let start = 0;
-    const duration = 1400;
-    const step = 16;
-    const increment = to / (duration / step);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= to) { setCount(to); clearInterval(timer); }
-      else setCount(Math.floor(start));
-    }, step);
-    return () => clearInterval(timer);
-  }, [isInView, to]);
-
-  return <span ref={ref}>{count}{suffix}</span>;
-}
-
-function WordReveal({ text }: { text: string }) {
-  return (
-    <span className="inline-flex flex-wrap gap-x-[0.28em]">
-      {text.split(" ").map((word, i) => (
-        <span key={i} className="overflow-hidden inline-block leading-tight">
-          <motion.span
-            className="inline-block"
-            initial={{ y: "115%", opacity: 0 }}
-            whileInView={{ y: "0%", opacity: 1 }}
-            viewport={VP}
-            transition={{ duration: 0.6, delay: 0.1 + i * 0.09, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {word}
-          </motion.span>
-        </span>
-      ))}
-    </span>
-  );
-}
 
 function ShimmerSweep({ trigger }: { trigger: boolean }) {
   const [swept, setSwept] = useState(false);
@@ -100,7 +54,7 @@ export function ContactUs() {
     <section
       id="contact"
       ref={sectionRef}
-      className="py-28 px-4 bg-[#eef3f8] border-t border-[#e0dfdc] relative overflow-hidden"
+      className="py-24 px-4 bg-[#eef3f8] relative overflow-hidden"
     >
       <motion.div
         className="absolute left-0 top-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#0a66c2]/5 blur-[130px] rounded-full pointer-events-none"
@@ -119,10 +73,10 @@ export function ContactUs() {
         <div>
           <motion.div
             className="flex items-center gap-2 mb-4"
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: -18 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={VP}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <motion.span
               className="w-2 h-2 rounded-full bg-[#0a66c2]"
@@ -134,60 +88,43 @@ export function ContactUs() {
             </span>
           </motion.div>
 
-          <h2 className="text-3xl md:text-4xl font-bold text-[#191919] tracking-tight mb-4 leading-tight">
-            <WordReveal text="Let's build your LinkedIn growth plan together." />
-          </h2>
+          <motion.h2
+            className="text-3xl md:text-4xl font-bold text-[#191919] tracking-tight mb-4 leading-tight"
+            initial={{ opacity: 0, y: -18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={VP}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            Let's build your LinkedIn growth plan together.
+          </motion.h2>
 
           <motion.p
             className="text-[#595959] text-lg leading-relaxed mb-10"
-            initial={{ opacity: 0, y: 24, filter: "blur(6px)" }}
-            whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            initial={{ opacity: 0, y: -18 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={VP}
-            transition={{ duration: 0.6, delay: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           >
             Tell us about your goals and we'll show you exactly how LinkedInFlow
-            fits your workflow — no generic demo, no sales pressure.
+            fits your workflow, no generic demo, no sales pressure.
           </motion.p>
 
-          <motion.div
-            className="grid grid-cols-3 gap-4 mb-10 p-4 rounded-2xl border border-[#dce6f1] bg-white shadow-sm"
-            initial={{ opacity: 0, y: 30, scale: 0.94 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={VP}
-            transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {STATS.map(({ value, suffix, label }, i) => (
-              <motion.div
-                key={label}
-                className="text-center"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={VP}
-                transition={{ duration: 0.45, delay: 0.4 + i * 0.1, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <div className="text-2xl font-bold text-[#0a66c2]">
-                  <CountUp to={value} suffix={suffix} />
-                </div>
-                <div className="text-xs text-[#86888a] mt-0.5">{label}</div>
-              </motion.div>
-            ))}
-          </motion.div>
 
           <ul className="space-y-4">
             {perks.map(({ icon: Icon, label }, j) => (
               <motion.li
                 key={label}
                 className="flex items-center gap-3"
-                initial={{ opacity: 0, x: -50, filter: "blur(6px)" }}
-                whileInView={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                initial={{ opacity: 0, y: -18 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={VP}
-                transition={{ duration: 0.5, delay: 0.55 + j * 0.12, ease: [0.22, 1, 0.36, 1] }}
+                transition={{ duration: 0.4, delay: 0.35 + j * 0.1, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.span
                   className="w-9 h-9 rounded-xl bg-[#eef3f8] border border-[#dce6f1] flex items-center justify-center shrink-0"
                   whileInView={{ scale: [0.5, 1.15, 1] }}
                   viewport={VP}
-                  transition={{ duration: 0.45, delay: 0.6 + j * 0.12, ease: "backOut" }}
+                  transition={{ duration: 0.45, delay: 0.4 + j * 0.1, ease: "backOut" }}
                 >
                   <Icon className="w-4 h-4 text-[#0a66c2]" />
                 </motion.span>
@@ -198,10 +135,10 @@ export function ContactUs() {
 
           <motion.div
             className="mt-10 flex items-center gap-3 text-sm text-[#86888a]"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
+            initial={{ opacity: 0, y: -18 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={VP}
-            transition={{ delay: 0.95 }}
+            transition={{ delay: 0.6 }}
           >
             <Mail className="w-4 h-4 shrink-0" />
             <span>hello@linkedinflow.com</span>
@@ -211,10 +148,10 @@ export function ContactUs() {
         {/* FORM CARD */}
         <motion.div
           className="relative rounded-2xl overflow-hidden"
-          initial={{ opacity: 0, x: 90, scale: 0.88, filter: "blur(16px)" }}
-          whileInView={{ opacity: 1, x: 0, scale: 1, filter: "blur(0px)" }}
+          initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+          whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           viewport={VP}
-          transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           style={{
             background: "#ffffff",
             border: "1px solid #dce6f1",
@@ -240,10 +177,10 @@ export function ContactUs() {
                     <motion.div
                       key={f.id}
                       className="space-y-2"
-                      initial={{ opacity: 0, y: 28, filter: "blur(6px)" }}
-                      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                      initial={{ opacity: 0, y: -18 }}
+                      whileInView={{ opacity: 1, y: 0 }}
                       viewport={VP}
-                      transition={{ duration: 0.5, delay: 0.35 + k * 0.1, ease: [0.22, 1, 0.36, 1] }}
+                      transition={{ duration: 0.4, delay: 0.2 + k * 0.08 }}
                     >
                       <label htmlFor={f.id} className="text-sm font-medium text-[#374151]">{f.label}</label>
                       <Input
@@ -261,10 +198,10 @@ export function ContactUs() {
 
                 <motion.div
                   className="space-y-2 mb-6"
-                  initial={{ opacity: 0, y: 28, filter: "blur(6px)" }}
-                  whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  initial={{ opacity: 0, y: -18 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={VP}
-                  transition={{ duration: 0.5, delay: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
                 >
                   <label htmlFor="contact-message" className="text-sm font-medium text-[#374151]">Message</label>
                   <Textarea
@@ -278,10 +215,10 @@ export function ContactUs() {
 
                 <motion.div
                   className="flex items-center justify-between gap-4 flex-col sm:flex-row"
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: -18 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={VP}
-                  transition={{ duration: 0.5, delay: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
                 >
                   <p className="text-sm text-[#86888a]">We usually respond within one business day.</p>
                   <Button
@@ -298,9 +235,9 @@ export function ContactUs() {
               <motion.div
                 key="success"
                 className="p-7 md:p-9 flex flex-col items-center justify-center min-h-[340px] text-center"
-                initial={{ opacity: 0, scale: 0.88, filter: "blur(10px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               >
                 <motion.div
                   className="w-16 h-16 rounded-full bg-[#eef3f8] border border-[#dce6f1] flex items-center justify-center mb-5"
@@ -312,14 +249,14 @@ export function ContactUs() {
                 </motion.div>
                 <motion.h3
                   className="text-xl font-bold text-[#191919] mb-2"
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   transition={{ delay: 0.3 }}
                 >
                   Message sent!
                 </motion.h3>
                 <motion.p
                   className="text-[#595959] text-sm mb-6"
-                  initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
                 >
                   We'll get back to you within one business day.

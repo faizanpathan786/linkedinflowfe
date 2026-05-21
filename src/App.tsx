@@ -21,31 +21,66 @@ import { useAuthStore } from './store/useAuthStore';
 import { useLinkedInStore } from './store/useLinkedInStore';
 import LinkedInCallback from './pages/LinkedInCallback';
 import Signup from './pages/Signup';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import { UserAgreement, PrivacyPolicy, CookiePolicy, HelpCenter } from './pages/LegalPages';
 import useLinkedInOAuth from '@/hooks/useLinkedInOAuth';
-import { postsAPI } from '@/lib/api';
+import { postsAPI, ideasAPI, brandVoiceAPI, queueSettingsAPI, notificationSettingsAPI, linkedInAPI } from '@/lib/api';
+import { useDataStore } from '@/store/useDataStore';
 
 function AppContent() {
   const { isAuthenticated, isLoading, checkAuth, user } = useAuthStore();
-  const { setPosts } = useLinkedInStore();
+  const { setPosts, setIdeas, hasInitializedPosts } = useLinkedInStore();
+  const { setBrandVoice, setNotificationPrefs, setQueueSettings, setLinkedInProfile } = useDataStore();
   const { fetchStatus } = useLinkedInOAuth();
 
-  // Restore session and load data on mount
+  // Restore session and load data on mount.
+  // If a token already exists in localStorage, fire posts + LinkedIn status
+  // in parallel with checkAuth so data is ready by the time the UI renders.
   useEffect(() => {
+    const token =
+      localStorage.getItem('auth_token') || localStorage.getItem('authToken');
+
     checkAuth();
+
+    if (token) {
+      postsAPI.getPosts().then((d) => setPosts(d.posts ?? [])).catch(() => {});
+      ideasAPI.getAll().then((d) => { if (d.success) setIdeas(d.data); }).catch(() => {});
+      brandVoiceAPI.get().then((d) => { if (d.success && d.data) setBrandVoice(d.data); }).catch(() => {});
+      queueSettingsAPI.get().then((d) => { if (d.success) setQueueSettings(d.data); }).catch(() => {});
+      notificationSettingsAPI.get().then((d) => { if (d.success) setNotificationPrefs(d.data); }).catch(() => {});
+    }
   }, []);
 
-  // Fetch LinkedIn status and posts when authenticated
+  // Fallback: first login after signup — no token existed on mount,
+  // so we fetch once auth is confirmed.
   useEffect(() => {
-    if (!isAuthenticated || isLoading) return;
+    if (!isAuthenticated || isLoading || hasInitializedPosts) return;
+    postsAPI.getPosts().then((d) => setPosts(d.posts ?? [])).catch(() => {});
+    ideasAPI.getAll().then((d) => { if (d.success) setIdeas(d.data); }).catch(() => {});
+    brandVoiceAPI.get().then((d) => { if (d.success && d.data) setBrandVoice(d.data); }).catch(() => {});
+    queueSettingsAPI.get().then((d) => { if (d.success) setQueueSettings(d.data); }).catch(() => {});
+    notificationSettingsAPI.get().then((d) => { if (d.success) setNotificationPrefs(d.data); }).catch(() => {});
+  }, [isAuthenticated, isLoading]);
 
-    // Fetch LinkedIn status
+  // Fetch LinkedIn status + profile as soon as user ID is known.
+  // Runs in parallel with everything else — profile is ready before user opens the vault page.
+  useEffect(() => {
+    if (!user?.id) return;
     fetchStatus();
-
-    // Fetch posts
-    postsAPI.getPosts()
-      .then((data) => setPosts(data.posts ?? []))
-      .catch((err) => console.error('Failed to load posts:', err));
-  }, [isAuthenticated, isLoading, user?.id]);
+    linkedInAPI.getToken(user.id)
+      .then((res) => {
+        if (res?.success && res?.data) {
+          const isConnected = !res.data.expires_at || new Date(res.data.expires_at) > new Date();
+          if (isConnected) {
+            linkedInAPI.getProfile(user.id!)
+              .then((r) => { if (r?.success && r?.data) setLinkedInProfile(r.data); })
+              .catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   // Show full-page spinner while checking session
   if (isLoading) {
@@ -75,6 +110,16 @@ function AppContent() {
             path="/signup"
             element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Signup />}
           />
+
+          {/* Auth utility routes */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {/* Legal / info pages */}
+          <Route path="/legal/user-agreement" element={<UserAgreement />} />
+          <Route path="/legal/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/legal/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/legal/help-center" element={<HelpCenter />} />
 
           {/* LinkedIn OAuth callback — LinkedIn redirects here with ?code=&state= */}
           <Route path="/api/oauth/linkedin/callback" element={<LinkedInCallback />} />

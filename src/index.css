@@ -6,7 +6,7 @@
 @layer base {
   :root {
     /* LinkedIn light theme */
-    --background: 210 44% 95%;
+    --background: 40 8% 96%;
     --foreground: 0 0% 10%;
 
     --card: 0 0% 100%;
@@ -17,11 +17,11 @@
     --primary: 211 90% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 44% 95%;
+    --secondary: 40 10% 95%;
     --secondary-foreground: 0 0% 10%;
-    --muted: 210 40% 95%;
-    --muted-foreground: 210 2% 53%;
-    --accent: 210 40% 95%;
+    --muted: 40 8% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 40 10% 93%;
     --accent-foreground: 0 0% 10%;
 
     /* ── Semantic ───────────────────────────── */
@@ -59,46 +59,49 @@
   }
 
   .dark {
-    --background: 210 44% 95%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    color-scheme: dark;
+
+    --background: 0 0% 9%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 96%;
 
     --primary: 211 90% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 44% 95%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 210 40% 95%;
-    --muted-foreground: 210 2% 53%;
-    --accent: 210 40% 95%;
-    --accent-foreground: 0 0% 10%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 45 6% 87%;
-    --input: 210 40% 98%;
+    --border: 0 0% 20%;
+    --input: 0 0% 13%;
     --ring: 211 90% 40%;
 
-    --success: 142 62% 35%;
+    --success: 142 62% 45%;
     --success-foreground: 0 0% 100%;
 
-    --sidebar-bg: 0 0% 100%;
-    --sidebar-bg-hover: 210 40% 95%;
+    --sidebar-bg: 0 0% 8%;
+    --sidebar-bg-hover: 0 0% 14%;
     --sidebar-bg-active: 211 90% 40%;
-    --sidebar-border: 45 6% 87%;
-    --sidebar-text: 0 0% 35%;
+    --sidebar-border: 0 0% 17%;
+    --sidebar-text: 0 0% 56%;
     --sidebar-text-active: 0 0% 100%;
-    --sidebar-brand: 0 0% 97%;
+    --sidebar-brand: 0 0% 10%;
 
-    --shadow-xs: 0 4px 20px rgba(0,0,0,0.06);
-    --shadow-sm: 0 4px 20px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
-    --shadow-lg: 0 4px 20px rgba(0,0,0,0.06);
-    --shadow-xl: 0 4px 20px rgba(0,0,0,0.06);
+    --shadow-xs: 0 4px 20px rgba(0,0,0,0.5);
+    --shadow-sm: 0 4px 20px rgba(0,0,0,0.5);
+    --shadow-md: 0 8px 28px rgba(0,0,0,0.6);
+    --shadow-lg: 0 12px 36px rgba(0,0,0,0.65);
+    --shadow-xl: 0 20px 48px rgba(0,0,0,0.7);
   }
 }
 
@@ -109,12 +112,17 @@
 
   html {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    background-color: #eef3f8;
+    background-color: #f5f5f2;
+  }
+
+  html.dark {
+    background-color: #111111;
   }
 
   body {
     @apply text-foreground min-h-screen;
     background: transparent;
+    overflow-x: hidden;
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -242,19 +250,19 @@
 
   /* ── Sidebar nav item ──────────────────── */
   .sidebar-item {
-    @apply flex items-center gap-2.5 rounded-xl px-3 py-1.5 text-[13px] font-semibold transition-all duration-150 cursor-pointer select-none text-[#191919] border border-transparent;
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-100 cursor-pointer select-none text-[#3d4350] border border-transparent;
   }
 
   .sidebar-item:hover {
-    @apply bg-gray-200/70 text-[#191919];
+    @apply bg-[#f1f3f6] text-[#1a1d23];
   }
 
   .sidebar-item.active {
-    @apply bg-[#0a66c2] text-white border border-[#0a66c2] shadow-[0_4px_20px_rgba(10,102,194,0.24)];
+    @apply bg-[#0a66c2] text-white border-transparent;
   }
 
   .dark .sidebar-item.active {
-    @apply bg-[#0a66c2] text-white border border-[#0a66c2] shadow-[0_4px_20px_rgba(10,102,194,0.24)];
+    @apply bg-[#0a66c2] text-white border-transparent;
   }
 
   /* ── Dark mode card depth ──────────────── */
@@ -265,11 +273,11 @@
   }
 
   .dashboard-shell {
-    background: #f9f8f6;
+    background: #f5f5f2;
   }
 
   .dark .dashboard-shell {
-    background: #f9f8f6;
+    background: #111111;
   }
 
   .dashboard-panel {
@@ -301,6 +309,67 @@
     pointer-events: none;
   }
 }
+
+/* ── Dark mode overrides for hardcoded colours ───────────────── */
+
+/* Sidebar */
+.dark aside.bg-white,
+.dark [class*="border-r"].bg-white { background-color: #141414 !important; }
+.dark .hover\:bg-\[\#f1f3f6\]:hover { background-color: #2a2a2a !important; }
+.dark .hover\:text-\[\#1a1d23\]:hover { color: #f5f5f5 !important; }
+.dark .text-gray-400               { color: #666666 !important; }
+.dark .sidebar-item:hover          { background-color: #242424 !important; color: #f5f5f5 !important; }
+
+/* Backgrounds — pure neutral dark, no blue tint */
+.dark .bg-white                { background-color: #1e1e1e !important; }
+.dark .bg-\[\#f8f9fb\]         { background-color: #252525 !important; }
+.dark .bg-\[\#f8fafc\]         { background-color: #252525 !important; }
+.dark .bg-\[\#fafafa\]         { background-color: #222222 !important; }
+.dark .bg-\[\#f3f4f6\]         { background-color: #2a2a2a !important; }
+.dark .bg-\[\#f9fafb\]         { background-color: #252525 !important; }
+.dark .bg-\[\#eff6ff\]         { background-color: #1a2535 !important; }
+
+/* Text */
+.dark .text-\[\#111827\]       { color: #f5f5f5 !important; }
+.dark .text-\[\#191919\]       { color: #f5f5f5 !important; }
+.dark .text-\[\#374151\]       { color: #d4d4d4 !important; }
+.dark .text-\[\#595959\]       { color: #999999 !important; }
+.dark .text-\[\#6b7280\]       { color: #888888 !important; }
+.dark .text-\[\#9ca3af\]       { color: #666666 !important; }
+.dark .text-\[\#d1d5db\]       { color: #404040 !important; }
+
+/* Borders */
+.dark .border-\[\#e8eaed\]     { border-color: #2e2e2e !important; }
+.dark .border-\[\#e0dfdc\]     { border-color: #2e2e2e !important; }
+.dark .border-\[\#f3f4f6\]     { border-color: #2a2a2a !important; }
+.dark .border-\[\#d1d5db\]     { border-color: #383838 !important; }
+.dark .border-\[\#c8cdd5\]     { border-color: #383838 !important; }
+.dark .border-\[\#dce6f1\]     { border-color: #2e3a4a !important; }
+.dark .border-\[\#e8eaed\]\/30 { border-color: rgba(46,46,46,0.4) !important; }
+
+/* Header */
+.dark header                   { background-color: #1a1a1a !important; border-bottom-color: #2e2e2e !important; }
+
+/* Input fields */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #262626 !important;
+  border-color: #2e2e2e !important;
+  color: #f5f5f5 !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder    { color: #555555 !important; }
+
+/* Dividers */
+.dark .divide-\[\#f3f4f6\] > * + * { border-color: #2a2a2a !important; }
+.dark .divide-\[\#e8eaed\] > * + * { border-color: #2e2e2e !important; }
+
+/* Blue accent — keep original blue, just slightly brighter */
+.dark .bg-\[\#0a66c2\]\/10        { background-color: rgba(10,102,194,0.18) !important; }
+.dark .bg-\[\#0a66c2\]\/\[0\.015\] { background-color: rgba(10,102,194,0.06) !important; }
+.dark .border-\[\#0a66c2\]\/30    { border-color: rgba(10,102,194,0.35) !important; }
+.dark .text-\[\#0a66c2\]          { color: #4d9de0 !important; }
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
 .scrollbar-hide {

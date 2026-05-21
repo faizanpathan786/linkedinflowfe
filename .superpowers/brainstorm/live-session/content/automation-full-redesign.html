@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Automation Page Redesign</title>
+<script src="/helper.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif; background: #f0f2f5; padding: 24px 16px 48px; color: #191919; }
+  h1 { font-size: 18px; font-weight: 800; color: #191919; margin-bottom: 4px; text-align:center; }
+  .sub { font-size: 13px; color: #595959; text-align:center; margin-bottom: 28px; }
+
+  .designs { display: flex; flex-direction: column; gap: 28px; }
+
+  /* ── Option card wrapper ── */
+  .opt { background: #fff; border-radius: 16px; overflow: hidden; border: 2.5px solid #e0dfdc; cursor: pointer; transition: border-color .2s, box-shadow .2s; }
+  .opt:hover { border-color: #0a66c2; box-shadow: 0 8px 28px rgba(10,102,194,.14); }
+  .opt.selected { border-color: #0a66c2; box-shadow: 0 8px 32px rgba(10,102,194,.2); }
+  .opt-label { display:flex; align-items:center; justify-content:space-between; padding: 12px 20px; border-bottom: 1px solid #f0f0ee; background:#fafafa; }
+  .opt-letter { font-size: 13px; font-weight: 800; color: #0a66c2; background:#eef3f8; border:1px solid #dce6f1; border-radius:8px; padding:3px 10px; }
+  .opt-title { font-size: 14px; font-weight: 700; color: #191919; }
+  .opt-desc  { font-size: 12px; color: #595959; }
+  .opt-check { width:22px; height:22px; border-radius:50%; border:2px solid #dce6f1; display:flex; align-items:center; justify-content:center; }
+  .opt.selected .opt-check { background:#0a66c2; border-color:#0a66c2; }
+  .opt.selected .opt-check::after { content:'✓'; color:#fff; font-size:12px; font-weight:800; }
+  .preview { padding: 20px; background: #f4f6f9; }
+
+  /* ──────────────────────────────────────────
+     OPTION A  –  Status-First Layout
+  ────────────────────────────────────────── */
+  .a-page { display:flex; flex-direction:column; gap:14px; }
+  .a-statusbar { background:#fff; border:1px solid #e0dfdc; border-radius:12px; padding:12px 18px; display:flex; align-items:center; gap:20px; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .a-stat { display:flex; flex-direction:column; gap:2px; }
+  .a-stat-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:#8a8a8a; font-weight:700; }
+  .a-stat-value { font-size:13px; font-weight:800; color:#191919; }
+  .a-stat-value.blue { color:#0a66c2; }
+  .a-divider { width:1px; height:32px; background:#e8eaf0; margin:0 4px; }
+  .a-badge { margin-left:auto; background:#e8f5e9; border:1px solid #a5d6a7; color:#2e7d32; border-radius:20px; padding:4px 12px; font-size:10px; font-weight:700; display:flex; align-items:center; gap:5px; }
+  .a-badge-dot { width:6px; height:6px; background:#43a047; border-radius:50%; }
+
+  .a-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .a-card { background:#fff; border:1px solid #e0dfdc; border-radius:14px; padding:18px; box-shadow:0 2px 10px rgba(0,0,0,.05); display:flex; flex-direction:column; gap:14px; }
+  .a-card-header { display:flex; align-items:center; gap:8px; }
+  .a-card-icon { width:32px; height:32px; background:#eef3f8; border:1px solid #dce6f1; border-radius:9px; display:flex; align-items:center; justify-content:center; }
+  .a-card-icon svg { width:15px; height:15px; fill:none; stroke:#0a66c2; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .a-card-title { font-size:13px; font-weight:800; color:#191919; }
+  .a-card-sub { font-size:10px; color:#8a8a8a; }
+
+  .a-presets { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .a-preset { border-radius:10px; padding:12px; border:2px solid #dce6f1; background:#f8fafc; }
+  .a-preset.active { background:#0a66c2; border-color:#0a66c2; }
+  .a-preset-name { font-size:11px; font-weight:800; color:#191919; margin-bottom:4px; }
+  .a-preset.active .a-preset-name { color:#fff; }
+  .a-preset-detail { font-size:9px; color:#595959; line-height:1.5; }
+  .a-preset.active .a-preset-detail { color:rgba(255,255,255,.75); }
+  .a-active-info { background:#f0f7ff; border:1px solid #bdd8f5; border-radius:9px; padding:10px 12px; font-size:10px; color:#0a66c2; font-weight:600; }
+
+  .a-days { display:flex; gap:5px; }
+  .a-day { width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; background:#f0f4f9; border:1px solid #dce6f1; color:#595959; }
+  .a-day.on { background:#0a66c2; border-color:#0a66c2; color:#fff; box-shadow:0 2px 6px rgba(10,102,194,.3); }
+  .a-time-row { display:flex; align-items:center; gap:8px; margin-top:2px; }
+  .a-spinner { display:flex; flex-direction:column; align-items:center; border:1px solid #dce6f1; border-radius:10px; overflow:hidden; background:#f8fafc; }
+  .a-spin-btn { width:40px; height:24px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#8a8a8a; }
+  .a-spin-val { width:40px; height:36px; display:flex; align-items:center; justify-content:center; background:#fff; border-top:1px solid #dce6f1; border-bottom:1px solid #dce6f1; font-size:16px; font-weight:800; color:#191919; }
+  .a-colon { font-size:18px; font-weight:900; color:#191919; }
+  .a-ampm { display:flex; flex-direction:column; border:1px solid #dce6f1; border-radius:10px; overflow:hidden; font-size:10px; font-weight:800; }
+  .a-ampm-btn { padding:6px 10px; }
+  .a-ampm-btn.on { background:#0a66c2; color:#fff; }
+  .a-ampm-btn.off { background:#f8fafc; color:#595959; }
+  .a-ampm-btn.off:first-child { border-bottom:1px solid #dce6f1; }
+  .a-next { margin-left:auto; background:#eef3f8; border:1px solid #dce6f1; border-radius:8px; padding:5px 10px; font-size:10px; color:#0a66c2; font-weight:700; }
+  .a-save-btn { align-self:flex-start; background:#0a66c2; color:#fff; border-radius:8px; padding:7px 18px; font-size:11px; font-weight:700; border:none; }
+
+  /* ──────────────────────────────────────────
+     OPTION B  –  Full-Width Hero Layout
+  ────────────────────────────────────────── */
+  .b-page { display:flex; flex-direction:column; gap:14px; }
+  .b-hero { background:linear-gradient(135deg,#0a66c2 0%,#004182 100%); border-radius:16px; padding:22px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .b-hero-left { display:flex; flex-direction:column; gap:6px; }
+  .b-hero-title { font-size:17px; font-weight:800; color:#fff; }
+  .b-hero-sub { font-size:11px; color:rgba(255,255,255,.7); }
+  .b-hero-stats { display:flex; gap:20px; margin-top:6px; }
+  .b-hero-stat { display:flex; flex-direction:column; gap:2px; }
+  .b-hero-stat-val { font-size:20px; font-weight:900; color:#fff; }
+  .b-hero-stat-lbl { font-size:9px; color:rgba(255,255,255,.6); text-transform:uppercase; letter-spacing:.05em; font-weight:700; }
+  .b-hero-right { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+  .b-hero-badge { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; border-radius:20px; padding:5px 14px; font-size:10px; font-weight:700; backdrop-filter:blur(4px); }
+  .b-toggle-row { display:flex; align-items:center; gap:8px; }
+  .b-toggle-label { font-size:11px; color:rgba(255,255,255,.8); font-weight:600; }
+  .b-toggle { width:36px; height:20px; background:rgba(255,255,255,.35); border-radius:10px; position:relative; }
+  .b-toggle-dot { width:16px; height:16px; background:#fff; border-radius:50%; position:absolute; top:2px; right:2px; box-shadow:0 1px 3px rgba(0,0,0,.2); }
+
+  .b-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .b-card { background:#fff; border:1px solid #e0dfdc; border-radius:14px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.05); }
+  .b-card-top { padding:14px 18px 12px; border-bottom:1px solid #f0f0ee; display:flex; align-items:center; gap:10px; }
+  .b-card-icon { width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; }
+  .b-card-icon.blue { background:#eef3f8; }
+  .b-card-title { font-size:13px; font-weight:800; color:#191919; }
+  .b-card-hint  { font-size:10px; color:#8a8a8a; }
+  .b-card-body { padding:14px 18px; display:flex; flex-direction:column; gap:12px; }
+
+  .b-presets { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+  .b-preset { border-radius:10px; padding:10px 8px; border:1.5px solid #dce6f1; background:#f8fafc; text-align:center; }
+  .b-preset.active { background:linear-gradient(135deg,#0a66c2,#1a7fe0); border-color:transparent; }
+  .b-preset-name { font-size:10px; font-weight:800; color:#191919; }
+  .b-preset.active .b-preset-name { color:#fff; }
+  .b-preset-val { font-size:14px; font-weight:900; color:#0a66c2; margin:4px 0 2px; }
+  .b-preset.active .b-preset-val { color:#fff; }
+  .b-preset-lbl { font-size:8px; color:#8a8a8a; }
+  .b-preset.active .b-preset-lbl { color:rgba(255,255,255,.65); }
+
+  .b-schedule-label { font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:#8a8a8a; font-weight:700; margin-bottom:4px; }
+  .b-days { display:flex; gap:4px; }
+  .b-day { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; background:#f0f4f9; border:1px solid #dce6f1; color:#8a8a8a; }
+  .b-day.on { background:#0a66c2; border-color:#0a66c2; color:#fff; }
+  .b-time-display { background:#f0f4f9; border:1px solid #dce6f1; border-radius:10px; padding:8px 14px; display:flex; align-items:center; justify-content:space-between; }
+  .b-time-val { font-size:22px; font-weight:900; color:#191919; letter-spacing:-.5px; font-variant-numeric:tabular-nums; }
+  .b-time-ampm { font-size:11px; font-weight:800; color:#0a66c2; background:#fff; border:1px solid #dce6f1; border-radius:6px; padding:4px 8px; }
+  .b-next { font-size:10px; color:#0a66c2; font-weight:600; }
+  .b-save { background:#0a66c2; color:#fff; border-radius:8px; padding:8px 18px; font-size:11px; font-weight:700; border:none; align-self:flex-start; }
+
+  /* ──────────────────────────────────────────
+     OPTION C  –  Unified Single Panel
+  ────────────────────────────────────────── */
+  .c-page { display:flex; flex-direction:column; gap:14px; }
+  .c-panel { background:#fff; border:1px solid #e0dfdc; border-radius:16px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.07); }
+  .c-panel-header { background:#fafbfc; border-bottom:1px solid #eceef2; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+  .c-panel-title { font-size:14px; font-weight:800; color:#191919; }
+  .c-panel-sub { font-size:11px; color:#8a8a8a; margin-top:1px; }
+  .c-status-pill { display:flex; align-items:center; gap:6px; background:#e8f5e9; border:1px solid #c8e6c9; border-radius:20px; padding:4px 12px; font-size:10px; font-weight:700; color:#2e7d32; }
+  .c-status-dot { width:6px; height:6px; background:#43a047; border-radius:50%; }
+
+  .c-body { padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .c-section { display:flex; flex-direction:column; gap:12px; }
+  .c-section-label { font-size:9px; text-transform:uppercase; letter-spacing:.07em; color:#8a8a8a; font-weight:800; padding-bottom:8px; border-bottom:1px solid #f0f0ee; }
+
+  .c-presets { display:flex; flex-direction:column; gap:7px; }
+  .c-preset-row { display:flex; align-items:center; padding:10px 12px; border-radius:10px; border:1.5px solid #e8eaf0; background:#fafbfc; gap:10px; cursor:pointer; }
+  .c-preset-row.active { background:#f0f7ff; border-color:#0a66c2; }
+  .c-radio { width:14px; height:14px; border-radius:50%; border:2px solid #dce6f1; flex-shrink:0; }
+  .c-radio.on { background:#0a66c2; border-color:#0a66c2; box-shadow:0 0 0 3px rgba(10,102,194,.15); }
+  .c-preset-info { flex:1; }
+  .c-preset-name { font-size:12px; font-weight:700; color:#191919; }
+  .c-preset-row.active .c-preset-name { color:#0a66c2; }
+  .c-preset-meta { font-size:10px; color:#8a8a8a; margin-top:1px; }
+  .c-preset-badge { font-size:9px; font-weight:700; background:#eef3f8; color:#0a66c2; border-radius:6px; padding:2px 7px; border:1px solid #dce6f1; }
+  .c-preset-row.active .c-preset-badge { background:#0a66c2; color:#fff; border-color:#0a66c2; }
+
+  .c-schedule-right { display:flex; flex-direction:column; gap:12px; }
+  .c-sched-row { display:flex; flex-direction:column; gap:6px; }
+  .c-sched-sublabel { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:#a0a7af; }
+  .c-days { display:flex; gap:4px; flex-wrap:wrap; }
+  .c-day { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; background:#f4f6f9; border:1px solid #e0e4ec; color:#8a8a8a; }
+  .c-day.on { background:#0a66c2; border-color:#0a66c2; color:#fff; }
+
+  .c-time-control { display:flex; align-items:center; gap:7px; }
+  .c-spinner { display:flex; flex-direction:column; align-items:center; border:1px solid #dce6f1; border-radius:9px; overflow:hidden; background:#f8fafc; }
+  .c-spin-arrow { width:38px; height:22px; display:flex; align-items:center; justify-content:center; font-size:9px; color:#9a9a9a; }
+  .c-spin-val { width:38px; height:34px; display:flex; align-items:center; justify-content:center; background:#fff; border-top:1px solid #dce6f1; border-bottom:1px solid #dce6f1; font-size:15px; font-weight:800; color:#191919; }
+  .c-colon { font-size:16px; font-weight:900; color:#191919; }
+  .c-ampm { display:flex; flex-direction:column; border:1px solid #dce6f1; border-radius:9px; overflow:hidden; font-size:9px; font-weight:800; }
+  .c-ampm span { padding:5px 9px; }
+  .c-ampm .on { background:#0a66c2; color:#fff; }
+  .c-ampm .off { background:#f8fafc; color:#8a8a8a; }
+  .c-ampm .off.top { border-bottom:1px solid #dce6f1; }
+
+  .c-next-info { background:#f0f7ff; border:1px solid #bdd8f5; border-radius:9px; padding:8px 12px; display:flex; align-items:center; gap:8px; }
+  .c-next-icon { width:22px; height:22px; background:#0a66c2; border-radius:6px; display:flex; align-items:center; justify-content:center; }
+  .c-next-text { font-size:10px; color:#0a66c2; font-weight:700; }
+  .c-next-sub { font-size:9px; color:#6b9fd4; }
+
+  .c-footer { padding:12px 20px; border-top:1px solid #f0f0ee; background:#fafbfc; display:flex; align-items:center; justify-content:space-between; }
+  .c-footer-info { font-size:10px; color:#8a8a8a; }
+  .c-save { background:#0a66c2; color:#fff; border-radius:8px; padding:8px 20px; font-size:11px; font-weight:700; border:none; }
+</style>
+</head>
+<body>
+
+<h1>Automation Page — Full Redesign</h1>
+<p class="sub">3 production-level layouts. Click a design to select it.</p>
+
+<div class="designs">
+
+  <!-- ══════════════════════════════ OPTION A ══════════════════════════════ -->
+  <div class="opt" data-choice="a" onclick="toggleSelect(this)">
+    <div class="opt-label">
+      <div>
+        <div class="opt-letter">A</div>
+      </div>
+      <div style="margin-left:12px;flex:1">
+        <div class="opt-title">Status-First Dashboard</div>
+        <div class="opt-desc">Live status bar on top, icon-header cards below. Data always visible.</div>
+      </div>
+      <div class="opt-check"></div>
+    </div>
+    <div class="preview">
+      <div class="a-page">
+        <!-- Status bar -->
+        <div class="a-statusbar">
+          <div class="a-stat"><span class="a-stat-label">Active Preset</span><span class="a-stat-value blue">Standard</span></div>
+          <div class="a-divider"></div>
+          <div class="a-stat"><span class="a-stat-label">Posts/Day</span><span class="a-stat-value">5</span></div>
+          <div class="a-divider"></div>
+          <div class="a-stat"><span class="a-stat-label">Schedule</span><span class="a-stat-value">Mon–Thu</span></div>
+          <div class="a-divider"></div>
+          <div class="a-stat"><span class="a-stat-label">Next Post</span><span class="a-stat-value blue">Mon, May 19</span></div>
+          <div class="a-badge"><div class="a-badge-dot"></div> Automation Active</div>
+        </div>
+        <!-- Cards row -->
+        <div class="a-grid">
+          <!-- Presets -->
+          <div class="a-card">
+            <div class="a-card-header">
+              <div class="a-card-icon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div><div class="a-card-title">Quick Presets</div><div class="a-card-sub">Apply automation profile</div></div>
+            </div>
+            <div class="a-presets">
+              <div class="a-preset"><div class="a-preset-name">Conservative</div><div class="a-preset-detail">3/day<br>30m delay</div></div>
+              <div class="a-preset active"><div class="a-preset-name">Standard</div><div class="a-preset-detail">5/day<br>10m delay</div></div>
+              <div class="a-preset"><div class="a-preset-name">Aggressive</div><div class="a-preset-detail">20/day<br>2m delay</div></div>
+            </div>
+            <div class="a-active-info">⚡ Standard — 5 posts/day, 10 min between posts, 3 retries on failure.</div>
+          </div>
+          <!-- Schedule -->
+          <div class="a-card">
+            <div class="a-card-header">
+              <div class="a-card-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+              <div style="flex:1"><div class="a-card-title">Posting Schedule</div><div class="a-card-sub">Days & time</div></div>
+              <div style="width:32px;height:18px;background:#0a66c2;border-radius:9px;position:relative;"><div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;right:2px;top:2px;box-shadow:0 1px 3px rgba(0,0,0,.2)"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-weight:700;">Active Days</div>
+              <div class="a-days">
+                <div class="a-day">S</div><div class="a-day on">M</div><div class="a-day on">T</div><div class="a-day on">W</div><div class="a-day on">T</div><div class="a-day">F</div><div class="a-day">S</div>
+              </div>
+              <div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#8a8a8a;font-weight:700;margin-top:4px;">Post Time</div>
+              <div class="a-time-row">
+                <div class="a-spinner"><div class="a-spin-btn">▲</div><div class="a-spin-val">09</div><div class="a-spin-btn">▼</div></div>
+                <div class="a-colon">:</div>
+                <div class="a-spinner"><div class="a-spin-btn">▲</div><div class="a-spin-val">30</div><div class="a-spin-btn">▼</div></div>
+                <div class="a-ampm"><div class="a-ampm-btn on">AM</div><div class="a-ampm-btn off">PM</div></div>
+                <div class="a-next">Next: Mon, May 19</div>
+              </div>
+            </div>
+            <button class="a-save-btn">Save Schedule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ OPTION B ══════════════════════════════ -->
+  <div class="opt" data-choice="b" onclick="toggleSelect(this)">
+    <div class="opt-label">
+      <div><div class="opt-letter">B</div></div>
+      <div style="margin-left:12px;flex:1">
+        <div class="opt-title">Hero Banner Layout</div>
+        <div class="opt-desc">Blue gradient hero with live stats, cards below with compact time display.</div>
+      </div>
+      <div class="opt-check"></div>
+    </div>
+    <div class="preview">
+      <div class="b-page">
+        <!-- Hero -->
+        <div class="b-hero">
+          <div class="b-hero-left">
+            <div class="b-hero-title">Automation</div>
+            <div class="b-hero-sub">Manage how your LinkedIn posts are published automatically</div>
+            <div class="b-hero-stats">
+              <div class="b-hero-stat"><div class="b-hero-stat-val">5</div><div class="b-hero-stat-lbl">Posts/day</div></div>
+              <div style="width:1px;background:rgba(255,255,255,.2);margin:0 4px"></div>
+              <div class="b-hero-stat"><div class="b-hero-stat-val">4</div><div class="b-hero-stat-lbl">Active days</div></div>
+              <div style="width:1px;background:rgba(255,255,255,.2);margin:0 4px"></div>
+              <div class="b-hero-stat"><div class="b-hero-stat-val">9:30</div><div class="b-hero-stat-lbl">Post time</div></div>
+            </div>
+          </div>
+          <div class="b-hero-right">
+            <div class="b-hero-badge">● Live · Standard</div>
+            <div class="b-toggle-row">
+              <span class="b-toggle-label">Schedule On</span>
+              <div class="b-toggle"><div class="b-toggle-dot"></div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Cards -->
+        <div class="b-grid">
+          <div class="b-card">
+            <div class="b-card-top">
+              <div class="b-card-icon blue" style="font-size:16px;">⚡</div>
+              <div><div class="b-card-title">Quick Presets</div><div class="b-card-hint">Select posting intensity</div></div>
+            </div>
+            <div class="b-card-body">
+              <div class="b-presets">
+                <div class="b-preset"><div class="b-preset-name">Conservative</div><div class="b-preset-val">3</div><div class="b-preset-lbl">posts/day</div></div>
+                <div class="b-preset active"><div class="b-preset-name">Standard</div><div class="b-preset-val">5</div><div class="b-preset-lbl">posts/day</div></div>
+                <div class="b-preset"><div class="b-preset-name">Aggressive</div><div class="b-preset-val">20</div><div class="b-preset-lbl">posts/day</div></div>
+              </div>
+              <div style="background:#f0f7ff;border:1px solid #bdd8f5;border-radius:9px;padding:9px 12px;font-size:10px;color:#0a66c2;font-weight:600;">
+                Standard: 5 posts/day · 10 min delay · 3 retries
+              </div>
+            </div>
+          </div>
+          <div class="b-card">
+            <div class="b-card-top">
+              <div class="b-card-icon blue" style="font-size:16px;">📅</div>
+              <div><div class="b-card-title">Posting Schedule</div><div class="b-card-hint">Next: Mon, May 19</div></div>
+            </div>
+            <div class="b-card-body">
+              <div>
+                <div class="b-schedule-label">Active Days</div>
+                <div class="b-days">
+                  <div class="b-day">S</div><div class="b-day on">M</div><div class="b-day on">T</div><div class="b-day on">W</div><div class="b-day on">T</div><div class="b-day">F</div><div class="b-day">S</div>
+                </div>
+              </div>
+              <div>
+                <div class="b-schedule-label">Post Time</div>
+                <div class="b-time-display">
+                  <div class="b-time-val">09:30</div>
+                  <div class="b-time-ampm">AM</div>
+                </div>
+              </div>
+              <div class="b-next">▸ Next post: Mon, May 19 at 9:30 AM</div>
+              <button class="b-save">Save Schedule</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════ OPTION C ══════════════════════════════ -->
+  <div class="opt" data-choice="c" onclick="toggleSelect(this)">
+    <div class="opt-label">
+      <div><div class="opt-letter">C</div></div>
+      <div style="margin-left:12px;flex:1">
+        <div class="opt-title">Unified Single Panel</div>
+        <div class="opt-desc">Everything in one bordered panel. Left: preset radios. Right: schedule. Footer save.</div>
+      </div>
+      <div class="opt-check"></div>
+    </div>
+    <div class="preview">
+      <div class="c-page">
+        <div class="c-panel">
+          <div class="c-panel-header">
+            <div><div class="c-panel-title">Automation</div><div class="c-panel-sub">Manage posting presets & schedule</div></div>
+            <div class="c-status-pill"><div class="c-status-dot"></div>Active · Standard</div>
+          </div>
+          <div class="c-body">
+            <!-- Left: presets as radio list -->
+            <div class="c-section">
+              <div class="c-section-label">Posting Preset</div>
+              <div class="c-presets">
+                <div class="c-preset-row">
+                  <div class="c-radio"></div>
+                  <div class="c-preset-info"><div class="c-preset-name">Conservative</div><div class="c-preset-meta">3/day · 30m delay · 2 retries</div></div>
+                  <div class="c-preset-badge">3/day</div>
+                </div>
+                <div class="c-preset-row active">
+                  <div class="c-radio on"></div>
+                  <div class="c-preset-info"><div class="c-preset-name">Standard</div><div class="c-preset-meta">5/day · 10m delay · 3 retries</div></div>
+                  <div class="c-preset-badge">5/day</div>
+                </div>
+                <div class="c-preset-row">
+                  <div class="c-radio"></div>
+                  <div class="c-preset-info"><div class="c-preset-name">Aggressive</div><div class="c-preset-meta">20/day · 2m delay · 5 retries</div></div>
+                  <div class="c-preset-badge">20/day</div>
+                </div>
+              </div>
+            </div>
+            <!-- Right: schedule -->
+            <div class="c-schedule-right">
+              <div class="c-section-label">Posting Schedule</div>
+              <div class="c-sched-row">
+                <div class="c-sched-sublabel">Active Days</div>
+                <div class="c-days">
+                  <div class="c-day">S</div><div class="c-day on">M</div><div class="c-day on">T</div><div class="c-day on">W</div><div class="c-day on">T</div><div class="c-day">F</div><div class="c-day">S</div>
+                </div>
+              </div>
+              <div class="c-sched-row">
+                <div class="c-sched-sublabel">Post Time</div>
+                <div class="c-time-control">
+                  <div class="c-spinner"><div class="c-spin-arrow">▲</div><div class="c-spin-val">09</div><div class="c-spin-arrow">▼</div></div>
+                  <div class="c-colon">:</div>
+                  <div class="c-spinner"><div class="c-spin-arrow">▲</div><div class="c-spin-val">30</div><div class="c-spin-arrow">▼</div></div>
+                  <div class="c-ampm"><span class="on">AM</span><span class="off top">PM</span></div>
+                </div>
+              </div>
+              <div class="c-next-info">
+                <div class="c-next-icon" style="font-size:11px;color:#fff;">▶</div>
+                <div><div class="c-next-text">Next: Mon, May 19</div><div class="c-next-sub">at 9:30 AM · Mon–Thu active</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="c-footer">
+            <div class="c-footer-info">Standard profile · Mon–Thu · 9:30 AM</div>
+            <button class="c-save">Save Schedule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

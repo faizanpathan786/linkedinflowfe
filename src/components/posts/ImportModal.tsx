@@ -26,7 +26,7 @@ import {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_ROWS   = 200;
+const MAX_ROWS   = 50;
 const MAX_BYTES  = 10 * 1024 * 1024; // 10 MB
 const ACCEPT_EXT = '.xlsx, .xls, .csv';
 

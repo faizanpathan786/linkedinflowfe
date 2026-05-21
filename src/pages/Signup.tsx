@@ -1,155 +1,93 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { authAPI } from '@/lib/api';
-import { useAuthStore } from '@/store/useAuthStore';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { ArrowRight, CheckCircle2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Eye, EyeOff } from 'lucide-react';
+import { earlyAccessAPI } from '@/lib/api';
 import { AuthLeftPanel } from '@/components/auth/AuthIllustration';
 
-const signupSchema = z.object({
-  name:     z.string().min(2, 'Name must be at least 2 characters'),
-  email:    z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type SignupData = z.infer<typeof signupSchema>;
-
-const footerLinks = ['User Agreement', 'Privacy Policy', 'Cookie Policy', 'Help Center'];
-
 export default function Signup() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading]       = useState(false);
-  const { setUser }  = useAuthStore();
-  const navigate     = useNavigate();
+  const [email, setEmail]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<SignupData>({
-    resolver: zodResolver(signupSchema),
-  });
-
-  const onSubmit = async (data: SignupData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      toast.error('Please enter a valid email address.');
+      return;
+    }
     try {
-      setIsLoading(true);
-      const result = await authAPI.register(data.email, data.password, data.name);
-      setUser(result.user);
-      toast.success('Account created!');
-      navigate('/dashboard', { replace: true });
+      setLoading(true);
+      await earlyAccessAPI.submit(trimmed);
+      setSubmitted(true);
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Signup failed. Please try again.');
+      toast.error(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen dashboard-shell flex items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-5xl bg-[#ffffff] rounded-3xl border border-[#e0dfdc] shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col md:flex-row">
+    <div className="h-screen overflow-hidden bg-[#f4efe6] lg:grid lg:grid-cols-2">
+      <AuthLeftPanel tagline="Join thousands growing their network on autopilot." />
 
-        <AuthLeftPanel tagline="Join thousands growing their network on autopilot." />
+      <div className="flex h-full items-center justify-center overflow-hidden bg-[#eef3f8] px-5 py-6 sm:px-10 lg:px-12">
+        <div className="w-full max-w-[390px]">
 
-        {/* ── Right: form panel ── */}
-        <div className="md:w-[58%] flex flex-col px-8 py-10 sm:px-12 sm:py-12 bg-[#ffffff]">
-
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="w-full max-w-[360px] mx-auto">
-
-              <h1 className="text-[30px] font-bold text-[#191919] leading-tight tracking-tight">
-                Create account
-              </h1>
-              <p className="mt-1.5 mb-8 text-sm text-[#595959]">
-                Start automating your LinkedIn presence
+          {submitted ? (
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-[#0a66c2]/10 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-[#0a66c2]" />
+              </div>
+              <h1 className="text-2xl font-semibold text-[#101010]">You're on the list!</h1>
+              <p className="text-sm text-[#595959] leading-relaxed">
+                We'll reach out to <span className="font-medium text-[#191919]">{email}</span> personally to get you set up.
               </p>
+              <Link to="/" className="text-sm text-[#0a66c2] hover:text-[#004182] hover:underline mt-2">
+                Back to home
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6 space-y-2.5">
+                <h1 className="text-[32px] font-semibold tracking-tight text-[#101010] sm:text-[40px]">
+                  Request
+                  <span className="block text-[#0a66c2]">early access</span>
+                </h1>
+                <p className="max-w-md text-sm leading-6 text-[#595959]">
+                  LinkedInFlow is currently invite-only. Drop your email and we'll reach out personally to get you set up.
+                </p>
+              </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-
-                {/* Full name */}
-                <div className="space-y-1.5">
-                  <label htmlFor="su-name" className="block text-[13px] font-semibold text-[#374151]">
-                    Full name
-                  </label>
-                  <input
-                    id="su-name"
-                    type="text"
-                    placeholder="Jane Smith"
-                    autoComplete="name"
-                    {...register('name')}
-                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f8fafc] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
-                  />
-                  {errors.name && (
-                    <p className="text-xs text-red-500">{errors.name.message}</p>
-                  )}
-                </div>
-
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label htmlFor="su-email" className="block text-[13px] font-semibold text-[#374151]">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
+                <div className="space-y-1.25">
+                  <label htmlFor="ea-email" className="block text-[13px] font-semibold text-[#374151]">
                     Email
                   </label>
                   <input
-                    id="su-email"
+                    id="ea-email"
                     type="email"
                     placeholder="you@example.com"
                     autoComplete="email"
-                    {...register('email')}
-                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f8fafc] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    disabled={loading}
+                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f3f2ee] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors disabled:opacity-60"
                   />
-                  {errors.email && (
-                    <p className="text-xs text-red-500">{errors.email.message}</p>
-                  )}
                 </div>
 
-                {/* Password */}
-                <div className="space-y-1.5">
-                  <label htmlFor="su-password" className="block text-[13px] font-semibold text-[#374151]">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="su-password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Min. 6 characters"
-                      autoComplete="new-password"
-                      {...register('password')}
-                      className="w-full h-11 px-3.5 pr-11 rounded-full text-sm bg-[#f8fafc] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#86888a] hover:text-[#191919] transition-colors"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  {errors.password && (
-                    <p className="text-xs text-red-500">{errors.password.message}</p>
-                  )}
-                </div>
-
-                {/* Terms note */}
-                <p className="text-[12px] text-[#595959] leading-relaxed">
-                  By clicking <span className="font-medium text-[#374151]">Create account</span>, you
-                  agree to our{' '}
-                  <Link to="#" className="text-[#0a66c2] hover:text-[#004182] hover:underline">User Agreement</Link>
-                  {' '}and{' '}
-                  <Link to="#" className="text-[#0a66c2] hover:text-[#004182] hover:underline">Privacy Policy</Link>.
-                </p>
-
-                {/* Buttons */}
                 <div className="flex gap-3 pt-1">
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={loading}
                     className="flex-1 h-11 rounded-full text-[14px] font-semibold border border-[#0a66c2] bg-[#0a66c2] text-white hover:bg-[#004182] active:bg-[#004182] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                   >
-                    {isLoading ? (
-                      <>
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white" />
-                        Creating…
-                      </>
-                    ) : 'Create account'}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>Get Early Access <ArrowRight className="h-4 w-4" /></>
+                    )}
                   </button>
                   <Link
                     to="/login"
@@ -158,22 +96,36 @@ export default function Signup() {
                     Sign in
                   </Link>
                 </div>
-
               </form>
-            </div>
-          </div>
 
-          {/* Footer */}
-          <div className="mt-8 flex flex-wrap justify-center gap-x-3 gap-y-1">
-            {footerLinks.map((item) => (
-              <Link key={item} to="#" className="text-[11px] text-[#86888a] hover:text-[#595959] hover:underline">
-                {item}
-              </Link>
-            ))}
-          </div>
+              <p className="mt-5 text-center text-[12px] text-[#86888a]">
+                No spam. No credit card. We'll reach out personally.
+              </p>
+            </>
+          )}
 
         </div>
       </div>
     </div>
   );
 }
+
+/*
+ * Original signup form commented out — app is invite-only (early access).
+ * Restore when payment/open registration is ready.
+ *
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { authAPI } from '@/lib/api';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
+
+const signupSchema = z.object({
+  name:     z.string().min(2, 'Name must be at least 2 characters'),
+  email:    z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+ * ... full form implementation preserved in git history
+ */

@@ -465,6 +465,18 @@ export const postsAPI = {
     const response = await api.post(`/posts/${id}/duplicate`);
     return response.data as { success: boolean; post: Post };
   },
+
+  /**
+   * POST /api/posts/rephrase
+   * Takes raw caption text and returns a professionally rewritten LinkedIn post.
+   */
+  rephrase: async (data: {
+    content: string;
+    brand_voice?: { tone?: string; style?: string; examples?: string };
+  }) => {
+    const response = await api.post('/api/posts/rephrase', data, { timeout: 30_000 });
+    return response.data as { success: boolean; content: string };
+  },
 };
 
 // ── Automation ────────────────────────────────────────────────────────────────
@@ -602,6 +614,15 @@ export const sheetsAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
+  },
+};
+
+// ── Early Access ──────────────────────────────────────────────────────────────
+
+export const earlyAccessAPI = {
+  submit: async (email: string) => {
+    const response = await api.post('/api/early-access', { email });
+    return response.data as { success: boolean; message?: string };
   },
 };
 

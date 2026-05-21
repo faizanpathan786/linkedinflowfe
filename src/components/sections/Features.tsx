@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useReducedMotion,
@@ -13,18 +13,18 @@ import { Sparkles, Layers, Lock } from "lucide-react";
 const FEATURES = [
   {
     icon: <Sparkles className="w-5 h-5 text-[#0a66c2]" />,
-    title: "Never stare at a blank screen again",
-    description: "AI drafts posts in your voice in seconds. You review, tweak, and schedule — the hard part is already done.",
+    title: "AI that writes in your voice, not a robot's",
+    description: "Capture a raw thought. LinkedInFlow turns it into a scroll-stopping post that sounds like you, not a template. No blank screen. No writer's block. Ever.",
   },
   {
     icon: <Layers className="w-5 h-5 text-[#0a66c2]" />,
-    title: "Your entire content pipeline, one place",
-    description: "From rough idea to published post — visual kanban board so nothing falls through the cracks.",
+    title: "From idea to published in under 5 minutes",
+    description: "Capture ideas, draft with AI, schedule to your calendar, and publish, all in one place. Your content pipeline finally runs itself.",
   },
   {
     icon: <Lock className="w-5 h-5 text-[#0a66c2]" />,
-    title: "Connect safely in 60 seconds",
-    description: "Official LinkedIn OAuth. One click, zero risk. We never see or store your password — ever.",
+    title: "Built on LinkedIn's official API. Always safe.",
+    description: "One-click OAuth connection. Zero passwords stored. Zero risk of account bans. We play by LinkedIn's rules so your profile stays protected.",
   },
 ];
 
@@ -77,8 +77,8 @@ function FeatureCard({ feature, index, isActive, onActivate, reduceMotion }: Car
       <motion.div
         ref={ref}
         style={reduceMotion ? {} : { rotateX, rotateY }}
-        initial={reduceMotion ? false : { opacity: 0, x: entryX, y: entryY, scale: 0.84, filter: "blur(12px)" }}
-        animate={isInView ? { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" } : {}}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.92, filter: "blur(8px)" }}
+        animate={isInView ? { opacity: 1, scale: 1, filter: "blur(0px)" } : {}}
         transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
@@ -195,17 +195,17 @@ export function Features() {
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div
           className="text-center max-w-2xl mx-auto mb-16"
-          initial={{ opacity: 0, y: 22 }}
+          initial={{ opacity: 0, y: -18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.6 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0a66c2] mb-4">Features</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0a66c2] mb-4">Why LinkedInFlow</p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-[#191919]">
-            Stop guessing. Start growing.
+            Everything you need to own LinkedIn.
           </h2>
           <p className="text-lg text-[#595959]">
-            Every feature is built around one goal — more reach, more leads, and more time back in your day.
+            Built for founders who know LinkedIn works but don't have 2 hours a day to prove it.
           </p>
         </motion.div>
 

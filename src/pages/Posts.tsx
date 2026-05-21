@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, type ElementType } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { PageError } from '@/components/ui/page-error';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
@@ -30,6 +28,7 @@ import {
   X,
   Copy,
   BookmarkPlus,
+  ExternalLink,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { postsAPI, type Post } from '@/lib/api';
@@ -44,39 +43,47 @@ import { saveTemplate } from '@/lib/templates';
 type StatusFilter = 'all' | 'draft' | 'scheduled' | 'published' | 'failed';
 type ExtPost = Omit<Post, 'status'> & { status: Post['status'] | 'publishing' };
 
-const statusMeta: Record<string, { label: string; icon: ElementType; dot: string; badge: string; text: string }> = {
+const statusMeta: Record<string, { label: string; icon: ElementType; dot: string; pill: string }> = {
   published: {
     label: 'Published', icon: CheckCircle,
-    dot: 'bg-green-500', badge: 'badge-success',
-    text: 'text-green-600',
+    dot: 'bg-emerald-500',
+    pill: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   },
   draft: {
     label: 'Draft', icon: Clock,
-    dot: 'bg-amber-500', badge: 'badge-warning',
-    text: 'text-amber-600',
+    dot: 'bg-amber-400',
+    pill: 'bg-amber-50 text-amber-700 border-amber-200',
   },
   scheduled: {
     label: 'Scheduled', icon: Calendar,
-    dot: 'bg-[#0a66c2]', badge: 'badge-info',
-    text: 'text-[#0a66c2]',
+    dot: 'bg-[#0a66c2]',
+    pill: 'bg-blue-50 text-[#0a66c2] border-blue-200',
   },
   failed: {
     label: 'Failed', icon: XCircle,
-    dot: 'bg-red-500', badge: 'badge-error',
-    text: 'text-red-600',
+    dot: 'bg-rose-500',
+    pill: 'bg-rose-50 text-rose-700 border-rose-200',
   },
   publishing: {
     label: 'Publishing', icon: RefreshCw,
-    dot: 'bg-[#0a66c2]', badge: 'badge-info',
-    text: 'text-[#0a66c2]',
+    dot: 'bg-[#0a66c2]',
+    pill: 'bg-blue-50 text-[#0a66c2] border-blue-200',
   },
 };
 
-const typeIcon = {
+const typeIcon: Record<string, ElementType> = {
   text:  FileText,
   image: ImageIcon,
   link:  LinkIcon,
   video: Video,
+};
+
+const accentBar: Record<string, string> = {
+  draft:      'bg-amber-400',
+  scheduled:  'bg-[#0a66c2]',
+  publishing: 'bg-[#0a66c2]',
+  published:  'bg-emerald-500',
+  failed:     'bg-rose-500',
 };
 
 function getFailureReason(post: Post): string | null {
@@ -106,17 +113,17 @@ function PostCard({
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
 }) {
-  const [deleting,   setDeleting]   = useState(false);
-  const [publishing, setPublishing] = useState(false);
-  const [retrying,   setRetrying]   = useState(false);
+  const [deleting,    setDeleting]    = useState(false);
+  const [publishing,  setPublishing]  = useState(false);
+  const [retrying,    setRetrying]    = useState(false);
   const [duplicating, setDuplicating] = useState(false);
-  const [logReason,  setLogReason]  = useState<string | null>(null);
+  const [logReason,   setLogReason]   = useState<string | null>(null);
+
   const meta        = statusMeta[post.status] ?? statusMeta['draft'];
   const TypeIcon    = typeIcon[post.post_type] ?? FileText;
-  const failureReason = post.status === 'failed' ? getFailureReason(post as Post) : null;
   const isPublishing  = post.status === 'publishing';
+  const failureReason = post.status === 'failed' ? getFailureReason(post as Post) : null;
 
-  // Auto-fetch publish log error when the post itself has no failure reason
   useEffect(() => {
     if (post.status !== 'failed' || failureReason) return;
     postsAPI.getLogs(post.id)
@@ -165,8 +172,7 @@ function PostCard({
       onRetry(post.id);
       toast.success('Retrying post...');
     } catch (err: any) {
-      const msg = err.response?.data?.message ?? 'Failed to retry post.';
-      toast.error(msg);
+      toast.error(err.response?.data?.message ?? 'Failed to retry post.');
     } finally {
       setRetrying(false);
     }
@@ -188,11 +194,15 @@ function PostCard({
   return (
     <div
       className={cn(
-        'post-card group',
-        isSelected && 'border-primary/40 bg-primary/[0.02]',
+        'group relative flex items-start gap-2.5 bg-white rounded-xl border px-4 py-3 overflow-hidden transition-all duration-150',
+        isSelected
+          ? 'border-[#0a66c2]/30 bg-[#0a66c2]/[0.015] shadow-sm'
+          : 'border-[#e8eaed] hover:border-[#d1d5db] hover:shadow-[0_1px_6px_rgba(0,0,0,0.06)]',
       )}
-      data-status={post.status}
     >
+      {/* Left accent bar */}
+      <div className={cn('absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl', accentBar[post.status] ?? 'bg-amber-400')} />
+
       {/* Checkbox */}
       {onToggleSelect && (
         <Checkbox
@@ -204,27 +214,22 @@ function PostCard({
       )}
 
       {/* Type icon */}
-      <div className="icon-container-sm shrink-0 mt-0.5">
-        <TypeIcon className="h-3.5 w-3.5" />
+      <div className="h-7 w-7 rounded-lg bg-[#f3f4f6] flex items-center justify-center shrink-0 mt-0.5">
+        <TypeIcon className="h-3.5 w-3.5 text-[#6b7280]" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-foreground line-clamp-2 leading-relaxed">{post.content}</p>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px] text-muted-foreground">
-          <span className={cn('flex items-center gap-1 font-medium', meta.text)}>
-            <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', isPublishing ? 'hidden' : meta.dot)} />
-            {isPublishing && <RefreshCw className="h-3 w-3 animate-spin text-[#0a66c2]" />}
-            {meta.label}
-          </span>
-          <span>·</span>
+      <div className="flex-1 min-w-0 mt-0.5">
+        <p className="text-[13px] text-[#111827] leading-snug line-clamp-2 pr-2">{post.content}</p>
+
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1 text-[11px] text-[#9ca3af]">
           <span>{format(new Date(post.created_at), 'MMM d, yyyy')}</span>
           <span>·</span>
           <span className="capitalize">{post.post_type}</span>
           {post.status === 'scheduled' && post.scheduled_at && (
             <>
               <span>·</span>
-              <span className="text-blue-600 dark:text-blue-400 font-medium">
+              <span className="text-[#0a66c2] font-medium">
                 Sends {format(new Date(post.scheduled_at), 'MMM d, h:mm a')}
               </span>
             </>
@@ -258,7 +263,7 @@ function PostCard({
         </div>
 
         {post.status === 'failed' && (
-          <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2 text-[11px] text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300">
+          <div className="mt-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-[11px] text-rose-700">
             <p className="font-semibold uppercase tracking-wide text-[10px] mb-0.5">Failure reason</p>
             {failureReason || logReason ? (
               <p className="leading-relaxed break-words">{failureReason ?? logReason}</p>
@@ -269,115 +274,70 @@ function PostCard({
         )}
 
         {post.status === 'failed' && (
-          <div className="mt-1.5">
-            <button
-              className="text-[11px] text-[#0a66c2] underline hover:no-underline"
-              onClick={() => onViewLog(post.id)}
-            >
-              View publish log
-            </button>
-          </div>
+          <button
+            className="mt-1.5 text-[11px] text-[#0a66c2] underline hover:no-underline"
+            onClick={() => onViewLog(post.id)}
+          >
+            View publish log
+          </button>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
-        {(post.status === 'draft' || post.status === 'scheduled') && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-            onClick={() => onEdit(post)}
-            disabled={publishing || deleting}
-            aria-label="Edit post"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-        )}
+      {/* Right side */}
+      <div className="shrink-0 flex flex-col items-end gap-1.5 mt-0.5">
 
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            navigator.clipboard.writeText(post.content);
-            toast.success('Copied to clipboard.');
-          }}
-          aria-label="Copy content"
-          title="Copy content"
-        >
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
+        {/* Status badge */}
+        <span className={cn(
+          'inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-full border',
+          meta.pill,
+        )}>
+          {isPublishing
+            ? <RefreshCw className="h-2 w-2 animate-spin" />
+            : <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', meta.dot)} />
+          }
+          {meta.label}
+        </span>
 
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          onClick={() => {
-            saveTemplate({ content: post.content, post_type: post.post_type });
-            toast.success('Saved as template.');
-          }}
-          aria-label="Save as template"
-          title="Save as template"
-        >
-          <BookmarkPlus className="h-3.5 w-3.5" />
-        </Button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {post.status === 'published' && post.linkedin_post_id && (
+            <a href={`https://www.linkedin.com/feed/update/${post.linkedin_post_id}/`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}>
+              <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#0a66c2] hover:bg-[#0a66c2]/10 transition-colors" title="View on LinkedIn">
+                <ExternalLink className="h-3 w-3" />
+              </button>
+            </a>
+          )}
+          {(post.status === 'draft' || post.status === 'scheduled') && (
+            <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={() => onEdit(post)} disabled={publishing || deleting} title="Edit">
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
+          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={() => { navigator.clipboard.writeText(post.content); toast.success('Copied.'); }} title="Copy">
+            <Copy className="h-3 w-3" />
+          </button>
+          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={() => { saveTemplate({ content: post.content, post_type: post.post_type }); toast.success('Saved as template.'); }} title="Save as template">
+            <BookmarkPlus className="h-3 w-3" />
+          </button>
+          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={handleDuplicate} disabled={duplicating || deleting} title="Duplicate">
+            {duplicating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3" />}
+          </button>
+          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-rose-600 hover:bg-rose-50 transition-colors" onClick={handleDelete} disabled={deleting || publishing} title="Delete">
+            {deleting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+          </button>
+        </div>
 
         {post.status === 'draft' && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2.5 text-xs gap-1"
-            onClick={handlePublish}
-            disabled={publishing || deleting}
-            aria-label="Publish post"
-          >
-            {publishing
-              ? <RefreshCw className="h-3 w-3 animate-spin" />
-              : <><Send className="h-3 w-3" />Publish</>}
-          </Button>
+          <button className="h-6 flex items-center gap-1 px-2 rounded-lg text-[11px] font-medium bg-[#0a66c2] hover:bg-[#0958a8] text-white transition-colors disabled:opacity-60" onClick={handlePublish} disabled={publishing || deleting}>
+            {publishing ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : <Send className="h-2.5 w-2.5" />}
+            Publish
+          </button>
         )}
-
         {post.status === 'failed' && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2.5 text-xs gap-1 text-[#0a66c2] border-[#0a66c2]/30 hover:bg-[#0a66c2]/5"
-            onClick={handleRetry}
-            disabled={retrying || deleting}
-            aria-label="Retry post"
-          >
-            {retrying
-              ? <RefreshCw className="h-3 w-3 animate-spin" />
-              : <><RotateCcw className="h-3 w-3" />Retry</>}
-          </Button>
+          <button className="h-6 flex items-center gap-1 px-2 rounded-lg text-[11px] font-medium border border-[#0a66c2]/30 text-[#0a66c2] hover:bg-[#0a66c2]/5 transition-colors disabled:opacity-60" onClick={handleRetry} disabled={retrying || deleting}>
+            {retrying ? <RefreshCw className="h-2.5 w-2.5 animate-spin" /> : <RotateCcw className="h-2.5 w-2.5" />}
+            Retry
+          </button>
         )}
-
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-          onClick={handleDuplicate}
-          disabled={duplicating || deleting}
-          aria-label="Duplicate post"
-        >
-          {duplicating
-            ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            : <Copy className="h-3.5 w-3.5" />}
-        </Button>
-
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-          onClick={handleDelete}
-          disabled={deleting || publishing}
-          aria-label="Delete post"
-        >
-          {deleting
-            ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-            : <Trash2 className="h-3.5 w-3.5" />}
-        </Button>
       </div>
     </div>
   );
@@ -387,7 +347,6 @@ function PostCard({
 
 export function Posts() {
   const { posts, setPosts, removePost } = useLinkedInStore();
-  // Don't block the UI with skeletons if the store already has posts from a previous page load.
   const [isFetching,       setIsFetching]       = useState(posts.length === 0);
   const [fetchError,       setFetchError]        = useState<string | null>(null);
   const [importOpen,       setImportOpen]        = useState(false);
@@ -398,6 +357,7 @@ export function Posts() {
   const [isBulkPublishing, setIsBulkPublishing] = useState(false);
   const [isPausingAll,     setIsPausingAll]     = useState(false);
   const [logPostId,        setLogPostId]         = useState<string | null>(null);
+  const [activeTab,        setActiveTab]         = useState<StatusFilter>('draft');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -415,10 +375,8 @@ export function Posts() {
       .finally(() => { if (!silent) setIsFetching(false); });
   };
 
-  // If store already has data, refresh silently in background — no skeletons.
   useEffect(() => { fetchPosts(posts.length > 0); }, []);
 
-  // Silent background poll — runs once, checks a ref so posts changes don't restart the timer.
   const postsRef = useRef(posts);
   useEffect(() => { postsRef.current = posts; }, [posts]);
   useEffect(() => {
@@ -427,9 +385,7 @@ export function Posts() {
         p => p.status === 'scheduled' || (p.status as string) === 'publishing'
       );
       if (!hasActive) return;
-      postsAPI.getPosts()
-        .then(data => setPosts(data.posts ?? []))
-        .catch(() => {});
+      postsAPI.getPosts().then(data => setPosts(data.posts ?? [])).catch(() => {});
     }, 30_000);
     return () => clearInterval(interval);
   }, []);
@@ -441,44 +397,34 @@ export function Posts() {
     }
   }, [searchParams, setSearchParams]);
 
-  const handleDelete = (id: string) => {
+  const handleDelete      = (id: string) => {
     removePost(id);
     setSelectedIds(prev => { const s = new Set(prev); s.delete(id); return s; });
   };
-
-  const handlePostUpdated = (updated: Post) => {
-    setPosts(posts.map(p => p.id === updated.id ? updated : p));
-  };
-
-  const handlePublish = (id: string) => {
-    setPosts(posts.map(p =>
-      p.id === id ? { ...p, status: 'published' as const, published_at: new Date().toISOString() } : p
-    ));
-  };
-
-  const handleRetry = (id: string) => {
-    setPosts(posts.map(p =>
-      p.id === id ? { ...p, status: 'publishing' as unknown as Post['status'] } : p
-    ));
-  };
-
-  const handleDuplicate = (newPostId: string) => {
+  const handlePostUpdated = (updated: Post) => setPosts(posts.map(p => p.id === updated.id ? updated : p));
+  const handlePublish     = (id: string) => setPosts(posts.map(p =>
+    p.id === id ? { ...p, status: 'published' as const, published_at: new Date().toISOString() } : p
+  ));
+  const handleRetry       = (id: string) => setPosts(posts.map(p =>
+    p.id === id ? { ...p, status: 'publishing' as unknown as Post['status'] } : p
+  ));
+  const handleDuplicate   = (newPostId: string) => {
     postsAPI.getPost(newPostId)
       .then(data => setPosts([data.post, ...posts]))
-      .catch(() => {
-        postsAPI.getPosts().then(d => setPosts(d.posts ?? [])).catch(() => {});
-      });
+      .catch(() => postsAPI.getPosts().then(d => setPosts(d.posts ?? [])).catch(() => {}));
   };
 
-  const toggleSelect   = (id: string) => {
-    setSelectedIds(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
-  };
+  const toggleSelect   = (id: string) => setSelectedIds(prev => {
+    const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
+  });
   const selectAll      = (list: Post[]) => setSelectedIds(new Set(list.map(p => p.id)));
   const clearSelection = ()             => setSelectedIds(new Set());
+
+  const handleTabChange = (tab: StatusFilter) => {
+    setActiveTab(tab);
+    setSearchQuery('');
+    clearSelection();
+  };
 
   const handleBulkDelete = async () => {
     setIsBulkDeleting(true);
@@ -501,9 +447,7 @@ export function Posts() {
     const succeeded = ids.filter((_, i) => results[i].status === 'fulfilled');
     if (succeeded.length > 0) {
       setPosts(posts.map(p =>
-        succeeded.includes(p.id)
-          ? { ...p, status: 'published' as const, published_at: new Date().toISOString() }
-          : p
+        succeeded.includes(p.id) ? { ...p, status: 'published' as const, published_at: new Date().toISOString() } : p
       ));
     }
     clearSelection();
@@ -540,14 +484,20 @@ export function Posts() {
     return base.filter(p => p.content.toLowerCase().includes(q));
   };
 
-  return (
-    <div className="space-y-3 animate-fade-in">
+  const tabDefs: { value: StatusFilter; label: string; count: number }[] = [
+    { value: 'all',       label: 'All',       count: posts.length   },
+    { value: 'draft',     label: 'Drafts',    count: draftCount     },
+    { value: 'scheduled', label: 'Scheduled', count: scheduledCount },
+    { value: 'published', label: 'Published', count: publishedCount },
+    { value: 'failed',    label: 'Failed',    count: failedCount    },
+  ];
 
-      {/* ── Page header ──────────────────────────────────────────── */}
+  return (
+    <div className="flex flex-col gap-3 h-full animate-fade-in">
+
+      {/* ── Page header ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
+          <button
             onClick={() => {
               setIsFetching(true);
               setFetchError(null);
@@ -557,263 +507,176 @@ export function Posts() {
                 .finally(() => setIsFetching(false));
             }}
             disabled={isFetching}
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#e8eaed] bg-white text-[#9ca3af] hover:text-[#374151] hover:bg-[#f8f9fb] transition-colors disabled:opacity-50"
+            title="Refresh"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
-            <span className="hidden sm:inline ml-1.5">Refresh</span>
-          </Button>
+          </button>
           {scheduledCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handlePauseAll}
-              disabled={isPausingAll}
-            >
-              {isPausingAll
-                ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                : <Clock className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline ml-1.5">Pause all</span>
+            <Button variant="outline" size="sm" onClick={handlePauseAll} disabled={isPausingAll}
+              className="h-8 text-[13px] rounded-lg border-[#e8eaed] text-[#374151] hover:bg-[#f8f9fb] gap-1.5">
+              {isPausingAll ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Clock className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">Pause all</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}
+            className="h-8 text-[13px] rounded-lg border-[#e8eaed] text-[#374151] hover:bg-[#f8f9fb] gap-1.5">
             <FileUp className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline ml-1.5">Import</span>
+            <span className="hidden sm:inline">Import</span>
           </Button>
-          <Button size="sm" onClick={() => navigate('/dashboard/create-post')}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
+          <Button size="sm" onClick={() => navigate('/dashboard/create-post')}
+            className="h-8 text-[13px] rounded-lg bg-[#0a66c2] hover:bg-[#0958a8] gap-1.5">
+            <Plus className="h-3.5 w-3.5" />
             Create post
           </Button>
       </div>
 
+      {/* ── Main card ───────────────────────────────────────────────── */}
+      <Card className="bg-white border-[#e8eaed] flex flex-col flex-1 min-h-0 rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.05)] overflow-hidden">
 
-      {/* ── Posts list ────────────────────────────────────────────── */}
-      <Card className="bg-white border-[#dce6f1]">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-            <div className="icon-container-sm">
-              <MessageSquare className="h-3.5 w-3.5" />
-            </div>
-            All Posts
-            {posts.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{posts.length}</Badge>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
+        {/* Underline tab bar */}
+        <div className="flex border-b border-[#e8eaed] overflow-x-auto scrollbar-hide shrink-0 px-2">
+          {tabDefs.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => handleTabChange(tab.value)}
+              className={cn(
+                'relative px-3 py-3.5 text-[13px] font-medium whitespace-nowrap transition-colors shrink-0',
+                activeTab === tab.value
+                  ? 'text-[#0a66c2]'
+                  : 'text-[#6b7280] hover:text-[#374151]',
+              )}
+            >
+              {tab.label} ({tab.count})
+              {activeTab === tab.value && (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#0a66c2] rounded-t-full" />
+              )}
+            </button>
+          ))}
+        </div>
 
-          {/* Search */}
+        {/* Search bar */}
+        <div className="px-4 pt-2.5 pb-2 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#9ca3af] pointer-events-none" />
             <Input
               placeholder="Search posts…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9 pr-8 h-9 text-sm"
+              className="pl-9 pr-8 h-9 text-[13px] bg-[#f8f9fb] border-[#e8eaed] rounded-lg"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 flex items-center justify-center rounded text-[#9ca3af] hover:text-[#374151]"
                 aria-label="Clear search"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
+        </div>
 
-          {/* Error */}
+        {/* Content */}
+        <CardContent className="flex-1 min-h-0 overflow-y-auto px-4 pb-3 pt-1 space-y-1.5">
+
           {fetchError && <PageError message={fetchError} onRetry={fetchPosts} />}
 
-          {/* Skeleton */}
           {isFetching ? (
-            <div className="space-y-2">
+            <div className="space-y-2 pt-1">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex items-start gap-3 p-4 border border-border rounded-xl">
-                  <Skeleton className="h-7 w-7 rounded-md shrink-0 mt-0.5" />
+                <div key={i} className="flex items-start gap-3 px-5 py-4 border border-[#e8eaed] rounded-xl bg-white">
+                  <Skeleton className="h-8 w-8 rounded-lg shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-2">
                     <Skeleton className="h-3.5 w-full" />
                     <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-2.5 w-1/2" />
+                    <Skeleton className="h-2.5 w-1/3" />
+                  </div>
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                    <Skeleton className="h-6 w-14 rounded-lg" />
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <Tabs
-              defaultValue="draft"
-              onValueChange={() => { setSearchQuery(''); clearSelection(); }}
-            >
-              {/* Tab list */}
-              <TabsList className="mb-4 flex-wrap h-auto gap-1 bg-muted/50 p-1">
-                <TabsTrigger value="all" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
-                  All
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{posts.length}</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="draft" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
-                  Drafts
-                  {draftCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                      {draftCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="scheduled" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
-                  Scheduled
-                  {scheduledCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      {scheduledCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="published" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
-                  Published
-                  {publishedCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">{publishedCount}</Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="failed" className="text-xs gap-1.5 h-7 text-black data-[state=active]:text-black">
-                  Failed
-                  {failedCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
-                      {failedCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
+          ) : (() => {
+            const tabPosts = filtered(activeTab);
+            const allSel   = tabPosts.length > 0 && tabPosts.every(p => selectedIds.has(p.id));
+            return (
+              <div className="space-y-1.5 pt-0.5">
+                {tabPosts.length === 0 ? (
+                  searchQuery ? (
+                    <EmptyState icon={MessageSquare} title="No posts match your search" description="Try a different search term or clear the search." />
+                  ) : activeTab === 'all' ? (
+                    <EmptyState icon={MessageSquare} title="No posts yet" description="Create your first post or import from a spreadsheet to get started." action={{ label: 'Create post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
+                  ) : activeTab === 'draft' ? (
+                    <EmptyState icon={FileText} title="No drafts" description="Write a post and save it as a draft — it will appear here until you publish it." action={{ label: 'Write a draft', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
+                  ) : activeTab === 'scheduled' ? (
+                    <EmptyState icon={Calendar} title="Queue is empty" description="Schedule a post to go live at the best time. Pick a future date and time when creating a post." action={{ label: 'Schedule a post', onClick: () => navigate('/dashboard/create-post'), icon: Clock }} />
+                  ) : activeTab === 'published' ? (
+                    <EmptyState icon={CheckCircle} title="Nothing published yet" description="Once a post is published to LinkedIn it appears here. Publish a draft or create a new post." action={{ label: 'Create post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
+                  ) : activeTab === 'failed' ? (
+                    <EmptyState icon={CheckCircle} title="All clear" description="No failed posts — everything is running smoothly." />
+                  ) : (
+                    <EmptyState icon={MessageSquare} title={`No ${activeTab} posts`} description="Nothing here yet." />
+                  )
+                ) : (
+                  <>
+                    {/* Select all / bulk bar */}
+                    <div className="flex items-center justify-between py-0.5 px-0.5">
+                      <button
+                        className="text-[12px] text-[#9ca3af] hover:text-[#374151] transition-colors"
+                        onClick={() => allSel ? clearSelection() : selectAll(tabPosts)}
+                      >
+                        {allSel ? 'Deselect all' : `Select all ${tabPosts.length}`}
+                      </button>
+                      {selectedIds.size > 0 && (
+                        <span className="text-[12px] text-[#6b7280] font-medium">
+                          {selectedIds.size} selected
+                        </span>
+                      )}
+                    </div>
 
-              {/* Tab content */}
-              {(['all', 'draft', 'scheduled', 'published', 'failed'] as StatusFilter[]).map((tab) => {
-                const tabPosts  = filtered(tab);
-                const allSel    = tabPosts.length > 0 && tabPosts.every(p => selectedIds.has(p.id));
-                return (
-                  <TabsContent key={tab} value={tab} className="space-y-2 mt-0">
-                    {tabPosts.length === 0 ? (
-                      searchQuery ? (
-                        <EmptyState
-                          icon={MessageSquare}
-                          title="No posts match your search"
-                          description="Try a different search term or clear the search."
-                        />
-                      ) : tab === 'all' ? (
-                        <EmptyState
-                          icon={MessageSquare}
-                          title="No posts yet"
-                          description="Create your first post or import from a spreadsheet to get started."
-                          action={{ label: 'Create post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }}
-                        />
-                      ) : tab === 'draft' ? (
-                        <EmptyState
-                          icon={FileText}
-                          title="No drafts"
-                          description="Write a post and save it as a draft — it will appear here until you publish it."
-                          action={{ label: 'Write a draft', onClick: () => navigate('/dashboard/create-post'), icon: Plus }}
-                        />
-                      ) : tab === 'scheduled' ? (
-                        <EmptyState
-                          icon={Calendar}
-                          title="Queue is empty"
-                          description="Schedule a post to go live at the best time. Pick a future date and time when creating a post."
-                          action={{ label: 'Schedule a post', onClick: () => navigate('/dashboard/create-post'), icon: Clock }}
-                        />
-                      ) : tab === 'published' ? (
-                        <EmptyState
-                          icon={CheckCircle}
-                          title="Nothing published yet"
-                          description="Once a post is published to LinkedIn it appears here. Publish a draft or create a new post."
-                          action={{ label: 'Create post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }}
-                        />
-                      ) : tab === 'failed' ? (
-                        <EmptyState
-                          icon={CheckCircle}
-                          title="All clear"
-                          description="No failed posts — everything is running smoothly."
-                        />
-                      ) : (
-                        <EmptyState
-                          icon={MessageSquare}
-                          title={`No ${tab} posts`}
-                          description="Nothing here yet."
-                        />
-                      )
-                    ) : (
-                      <>
-                        {/* Select all / bulk bar */}
-                        <div className="flex items-center justify-between py-1 px-0.5">
-                          <button
-                            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => allSel ? clearSelection() : selectAll(tabPosts)}
-                          >
-                            {allSel ? 'Deselect all' : `Select all ${tabPosts.length}`}
-                          </button>
-                          {selectedIds.size > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              {selectedIds.size} selected
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Bulk action bar */}
-                        {selectedIds.size > 0 && (
-                          <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-muted/40">
-                            <span className="text-xs font-medium text-foreground">
-                              {selectedIds.size} selected
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2.5 text-xs gap-1"
-                              onClick={handleBulkPublish}
-                              disabled={isBulkPublishing || isBulkDeleting}
-                            >
-                              {isBulkPublishing
-                                ? <RefreshCw className="h-3 w-3 animate-spin" />
-                                : <><Send className="h-3 w-3" />Publish drafts</>}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 px-2.5 text-xs gap-1 text-destructive hover:bg-destructive/10 border-destructive/30"
-                              onClick={handleBulkDelete}
-                              disabled={isBulkDeleting || isBulkPublishing}
-                            >
-                              {isBulkDeleting
-                                ? <RefreshCw className="h-3 w-3 animate-spin" />
-                                : <><Trash2 className="h-3 w-3" />Delete</>}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 px-2.5 text-xs ml-auto"
-                              onClick={clearSelection}
-                            >
-                              Cancel
-                            </Button>
-                          </div>
-                        )}
-
-                        {/* Post list */}
-                        <div className="space-y-1.5">
-                          {tabPosts.map(post => (
-                            <PostCard
-                              key={post.id}
-                              post={post}
-                              onDelete={handleDelete}
-                              onPublish={handlePublish}
-                              onEdit={p => setEditingPost(p as Post)}
-                              onViewLog={setLogPostId}
-                              onRetry={handleRetry}
-                              onDuplicate={handleDuplicate}
-                              isSelected={selectedIds.has(post.id)}
-                              onToggleSelect={toggleSelect}
-                            />
-                          ))}
-                        </div>
-                      </>
+                    {/* Bulk action bar */}
+                    {selectedIds.size > 0 && (
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-[#e8eaed] bg-[#f8f9fb]">
+                        <span className="text-[12px] font-semibold text-[#111827]">
+                          {selectedIds.size} selected
+                        </span>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1 ml-2" onClick={handleBulkPublish} disabled={isBulkPublishing || isBulkDeleting}>
+                          {isBulkPublishing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <><Send className="h-3 w-3" />Publish drafts</>}
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs gap-1 text-rose-600 hover:bg-rose-50 border-rose-200" onClick={handleBulkDelete} disabled={isBulkDeleting || isBulkPublishing}>
+                          {isBulkDeleting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <><Trash2 className="h-3 w-3" />Delete</>}
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 px-2.5 text-xs ml-auto text-[#6b7280]" onClick={clearSelection}>
+                          Cancel
+                        </Button>
+                      </div>
                     )}
-                  </TabsContent>
-                );
-              })}
-            </Tabs>
-          )}
+
+                    {/* Post list */}
+                    <div className="space-y-1.5">
+                      {tabPosts.map(post => (
+                        <PostCard
+                          key={post.id}
+                          post={post}
+                          onDelete={handleDelete}
+                          onPublish={handlePublish}
+                          onEdit={p => setEditingPost(p as Post)}
+                          onViewLog={setLogPostId}
+                          onRetry={handleRetry}
+                          onDuplicate={handleDuplicate}
+                          isSelected={selectedIds.has(post.id)}
+                          onToggleSelect={toggleSelect}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 

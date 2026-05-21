@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { linkedInAPI } from '@/lib/api';
+import { useLinkedInStore } from '@/store/useLinkedInStore';
 
 type Status = 'loading' | 'success' | 'error';
 
@@ -12,6 +13,7 @@ export default function LinkedInCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const didRun = useRef(false);
+  const { setLinkedInStatus } = useLinkedInStore();
 
   useEffect(() => {
     // Guard against React 18 Strict Mode double-fire
@@ -62,9 +64,32 @@ export default function LinkedInCallback() {
 
         if (result?.success) {
           sessionStorage.removeItem('linkedin_oauth_user_id');
+
+          // Refresh the store so the vault/header show "connected" immediately
+          // without needing a page reload. Use savedUserId because the auth
+          // store's user may not be hydrated yet (page just reloaded from LinkedIn).
+          if (savedUserId) {
+            linkedInAPI.getToken(savedUserId).then((res) => {
+              if (res?.success && res?.data) {
+                const d = res.data;
+                setLinkedInStatus({
+                  isConnected: true,
+                  isExpired: d.expires_at ? new Date(d.expires_at) < new Date() : false,
+                  data: {
+                    vanityName:  d.vanity_name  ?? '',
+                    personUrn:   d.person_urn   ?? '',
+                    profile:     {},
+                    expiresAt:   d.expires_at   ?? '',
+                    connectedAt: d.created_at   ?? '',
+                  },
+                });
+              }
+            }).catch(() => {});
+          }
+
           setStatus('success');
           toast.success(result.message || 'LinkedIn connected successfully!');
-          setTimeout(() => navigate('/dashboard/linkedin-vault', { replace: true }), 1500);
+          setTimeout(() => navigate('/dashboard', { replace: true }), 1500);
         } else {
           // Backend returned 2xx but success:false
           const msg =

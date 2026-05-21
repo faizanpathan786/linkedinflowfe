@@ -1,155 +1,73 @@
-// Shared illustration components used by both LoginForm and Signup pages.
+// Realistic SaaS product visual used by both LoginForm and Signup pages.
 
-// ── Window grid helper ────────────────────────────────────────────────────────
-
-interface WindowGridProps {
-  bx: number;
-  by: number;
-  bw: number;
-  bh: number;
-  cols: number;
-  rows: number;
-  baseOpacity?: number;
-}
-
-export function WindowGrid({ bx, by, bw, bh, cols, rows, baseOpacity = 0.52 }: WindowGridProps) {
-  const winW = 6;
-  const winH = 8;
-  const hGap = (bw - cols * winW) / (cols + 1);
-  const vGap = (bh - rows * winH) / (rows + 1);
-
-  const items = Array.from({ length: rows }, (_, r) =>
-    Array.from({ length: cols }, (_, c) => {
-      const isWarm = (r + c * 2) % 5 === 0;
-      const isLit  = (r + c)     % 4 !== 3;
-      return (
-        <rect
-          key={`w-${bx}-${r}-${c}`}
-          x={bx + hGap + c * (winW + hGap)}
-          y={by + vGap + r * (winH + vGap)}
-          width={winW}
-          height={winH}
-          fill={isWarm ? '#fff8cc' : 'white'}
-          opacity={isLit ? (isWarm ? 0.78 : baseOpacity) : 0.12}
-          rx="0.5"
-        />
-      );
-    })
-  ).flat();
-
-  return <>{items}</>;
-}
-
-// ── City illustration ─────────────────────────────────────────────────────────
-
-export function CityIllustration() {
+function MetricPill({ label, value, tone }: { label: string; value: string; tone: string }) {
   return (
-    <svg
-      viewBox="0 0 390 400"
-      xmlns="http://www.w3.org/2000/svg"
-      className="w-full h-full"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="li-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#c3dcf4" />
-          <stop offset="65%"  stopColor="#aecde8" />
-          <stop offset="100%" stopColor="#97bade" />
-        </linearGradient>
-        <linearGradient id="li-bA" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#b6d1eb" />
-          <stop offset="100%" stopColor="#8db4d4" />
-        </linearGradient>
-        <linearGradient id="li-bB" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#9dc3e3" />
-          <stop offset="100%" stopColor="#70a8cc" />
-        </linearGradient>
-        <linearGradient id="li-bC" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#c8dced" />
-          <stop offset="100%" stopColor="#a2c1da" />
-        </linearGradient>
-        <linearGradient id="li-ground" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="#72acd0" />
-          <stop offset="100%" stopColor="#5b96bb" />
-        </linearGradient>
-      </defs>
+    <div className={`rounded-2xl border border-white/10 bg-white/6 px-4 py-3 backdrop-blur-md ${tone}`}>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-white">{value}</p>
+    </div>
+  );
+}
 
-      {/* Sky */}
-      <rect width="390" height="400" fill="url(#li-sky)" />
+export function ProductHeroVisual() {
+  return (
+    <div className="relative flex h-full min-h-0 flex-1 overflow-hidden bg-[#071018] text-white">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.18),transparent_32%),radial-gradient(circle_at_78%_20%,rgba(16,185,129,0.18),transparent_30%),linear-gradient(135deg,#05070b_0%,#0b1320_52%,#081722_100%)]" />
+      <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
 
-      {/* Sun glow */}
-      <ellipse cx="310" cy="35" rx="45" ry="45" fill="white" opacity="0.13" />
-      <ellipse cx="310" cy="35" rx="28" ry="28" fill="white" opacity="0.18" />
-      <ellipse cx="310" cy="35" rx="14" ry="14" fill="white" opacity="0.28" />
+      <div className="relative z-10 flex h-full w-full flex-col justify-between p-5 sm:p-6 lg:px-10 lg:py-8 xl:px-12">
+        <div className="flex items-center gap-2.5">
+          <BrandMark />
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.28em] text-sky-300">LinkedInFlow</p>
+            <p className="text-sm text-white/70">Automate LinkedIn content with a real workflow.</p>
+          </div>
+        </div>
 
-      {/* Cloud 1 */}
-      <g opacity="0.70">
-        <ellipse cx="70"  cy="76" rx="38" ry="18" fill="white" />
-        <ellipse cx="96"  cy="65" rx="32" ry="21" fill="white" />
-        <ellipse cx="46"  cy="73" rx="25" ry="16" fill="white" />
-        <ellipse cx="118" cy="76" rx="20" ry="13" fill="white" />
-      </g>
+        <div className="mx-auto max-w-lg space-y-4 lg:space-y-5 xl:translate-x-2">
+          <h2 className="max-w-lg text-[2.4rem] font-semibold leading-[1.02] tracking-tight text-white sm:text-[2.75rem] xl:text-[3.8rem]">
+            Set it up once.
+            <span className="block text-[#7cc9ff]">Let it run from here.</span>
+          </h2>
+          <p className="max-w-md text-sm leading-6 text-white/68 sm:text-sm">
+            Plan, generate, schedule, and publish LinkedIn posts from one polished workspace. Built for teams that want a production-ready content system.
+          </p>
 
-      {/* Cloud 2 */}
-      <g opacity="0.58">
-        <ellipse cx="262" cy="50" rx="36" ry="16" fill="white" />
-        <ellipse cx="288" cy="41" rx="29" ry="19" fill="white" />
-        <ellipse cx="242" cy="54" rx="23" ry="13" fill="white" />
-      </g>
+          <div className="grid gap-2.5 sm:grid-cols-3">
+            <MetricPill label="Queue health" value="94%" tone="text-sky-300" />
+            <MetricPill label="Scheduled" value="18 posts" tone="text-sky-300" />
+            <MetricPill label="Published" value="2.1k reach" tone="text-white/92" />
+          </div>
+        </div>
 
-      {/* Cloud 3 (wispy) */}
-      <g opacity="0.42">
-        <ellipse cx="348" cy="98"  rx="26" ry="12" fill="white" />
-        <ellipse cx="366" cy="91"  rx="19" ry="13" fill="white" />
-        <ellipse cx="330" cy="102" rx="16" ry="9"  fill="white" />
-      </g>
+        <div className="mx-auto w-full max-w-lg rounded-[1.5rem] border border-white/10 bg-white/6 p-4 backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.22em] text-white/45">Workspace preview</p>
+              <p className="mt-1 text-[15px] font-semibold text-white">Weekly content pipeline</p>
+            </div>
+            <div className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-[11px] font-medium text-sky-200">
+              Live
+            </div>
+          </div>
 
-      {/* ── Back row ── */}
-      <rect x="12"  y="192" width="56" height="208" fill="url(#li-bC)" rx="1" />
-      <WindowGrid bx={12}  by={192} bw={56} bh={208} cols={3} rows={9}  baseOpacity={0.48} />
-
-      <rect x="96"  y="148" width="72" height="252" fill="url(#li-bA)" rx="1" />
-      <rect x="130" y="130" width="3"  height="20"  fill="#90bad8" />
-      <rect x="127" y="128" width="9"  height="3"   fill="#90bad8" rx="1" />
-      <WindowGrid bx={96}  by={148} bw={72} bh={252} cols={4} rows={11} baseOpacity={0.50} />
-
-      <rect x="206" y="168" width="76" height="232" fill="url(#li-bC)" rx="1" />
-      <rect x="228" y="160" width="30" height="10"  fill="#a8c5de" rx="1" />
-      <rect x="238" y="152" width="4"  height="10"  fill="#95b9d4" />
-      <WindowGrid bx={206} by={168} bw={76} bh={232} cols={4} rows={10} baseOpacity={0.48} />
-
-      <rect x="318" y="202" width="62" height="198" fill="url(#li-bA)" rx="1" />
-      <WindowGrid bx={318} by={202} bw={62} bh={198} cols={3} rows={8}  baseOpacity={0.48} />
-
-      {/* ── Front row ── */}
-      <rect x="0"   y="238" width="44" height="162" fill="url(#li-bB)" rx="1" />
-      <WindowGrid bx={0}   by={238} bw={44} bh={162} cols={2} rows={7}  baseOpacity={0.55} />
-
-      <rect x="50"  y="208" width="56" height="192" fill="url(#li-bB)" rx="1" />
-      <WindowGrid bx={50}  by={208} bw={56} bh={192} cols={3} rows={9}  baseOpacity={0.55} />
-
-      <rect x="114" y="272" width="42" height="128" fill="url(#li-bA)" rx="1" />
-      <WindowGrid bx={114} by={272} bw={42} bh={128} cols={2} rows={5}  baseOpacity={0.58} />
-
-      <rect x="162" y="192" width="62" height="208" fill="url(#li-bB)" rx="1" />
-      <rect x="172" y="182" width="42" height="12"  fill="#68a0c2" rx="1" />
-      <rect x="182" y="174" width="22" height="10"  fill="#5c96ba" rx="1" />
-      <WindowGrid bx={162} by={192} bw={62} bh={208} cols={3} rows={9}  baseOpacity={0.55} />
-
-      <rect x="230" y="222" width="54" height="178" fill="url(#li-bA)" rx="1" />
-      <WindowGrid bx={230} by={222} bw={54} bh={178} cols={3} rows={7}  baseOpacity={0.56} />
-
-      <rect x="290" y="242" width="52" height="158" fill="url(#li-bB)" rx="1" />
-      <WindowGrid bx={290} by={242} bw={52} bh={158} cols={3} rows={6}  baseOpacity={0.54} />
-
-      <rect x="348" y="258" width="42" height="142" fill="url(#li-bA)" rx="1" />
-      <WindowGrid bx={348} by={258} bw={42} bh={142} cols={2} rows={6}  baseOpacity={0.54} />
-
-      {/* Ground */}
-      <rect x="0" y="388" width="390" height="12"  fill="url(#li-ground)" />
-      <rect x="0" y="393" width="390" height="7"   fill="#4e88af" opacity="0.55" />
-    </svg>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-sky-200/60">Drafts</p>
+              <p className="mt-1 text-lg font-semibold text-white">12</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-sky-200/60">Scheduled</p>
+              <p className="mt-1 text-lg font-semibold text-white">8</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/45">Published</p>
+              <p className="mt-1 text-lg font-semibold text-white">41</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -176,21 +94,8 @@ interface AuthLeftPanelProps {
 
 export function AuthLeftPanel({ tagline = 'Grow your professional presence — effortlessly.' }: AuthLeftPanelProps) {
   return (
-    <div className="md:w-[42%] bg-[#eef3f8] flex flex-col overflow-hidden border-r border-[#dce6f1]">
-      <div className="px-7 pt-7 pb-3 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <BrandMark />
-          <span className="text-[17px] font-bold text-[#191919] tracking-tight select-none">
-            LinkedInFlow
-          </span>
-        </div>
-        <p className="mt-3 text-[13px] text-[#595959] leading-relaxed max-w-[210px]">
-          {tagline}
-        </p>
-      </div>
-      <div className="flex-1 min-h-[200px] overflow-hidden opacity-90">
-        <CityIllustration />
-      </div>
+      <div className="relative hidden min-h-screen overflow-hidden border-r border-white/10 bg-[#071018] lg:flex lg:w-full">
+      <ProductHeroVisual />
     </div>
   );
 }

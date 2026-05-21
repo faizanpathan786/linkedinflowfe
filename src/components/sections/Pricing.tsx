@@ -8,7 +8,7 @@ const VP = { once: false, amount: 0 } as const;
 const plans = [
   {
     name: "Free", monthly: 0, yearly: 0,
-    description: "Try LinkedInFlow with no commitment — no credit card needed.",
+    description: "Try LinkedInFlow with no commitment, no credit card needed.",
     entryX: -80,
     features: [
       "1 LinkedIn account",
@@ -19,14 +19,14 @@ const plans = [
   },
   {
     name: "Founder", monthly: 49, yearly: 39, popular: true,
-    description: "For B2B founders who want a consistent LinkedIn presence without the grind.",
+    description: "For founders who want a consistent LinkedIn presence without the grind.",
     entryX: 0,
     features: [
       "1 LinkedIn account",
       "Unlimited posts",
       "AI Post Interview",
       "Brand Voice settings",
-      "Analytics — what worked",
+      "Analytics: what worked",
       "Priority support",
     ],
   },
@@ -86,7 +86,7 @@ export function Pricing() {
             initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
             viewport={VP} transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
           >
-            LinkedIn ghostwriters charge $2,000/month. LinkedInFlow does it for $49/mo. Start free — no credit card needed.
+            LinkedIn ghostwriters charge $2,000/month. LinkedInFlow does it for $49/mo. Start free, no credit card needed.
           </motion.p>
 
           <motion.div
@@ -191,12 +191,6 @@ export function Pricing() {
           ))}
         </div>
 
-        <motion.p className="text-center text-sm text-[#86888a] mt-10"
-          initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={VP}
-          transition={{ delay: 0.6 }}
-        >
-          14-day free trial · No credit card · Cancel anytime · Most users see ROI in week one
-        </motion.p>
       </div>
     </section>
   );

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, CalendarDays, Menu, Sparkles, Check, XCircle, Info, Trash2, AlertTriangle, X, Sliders, LogOut, Linkedin } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  Bell, CalendarDays, Menu, Sparkles, Check, XCircle, Info,
+  Trash2, AlertTriangle, X, Sliders, LogOut, Linkedin,
+} from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
@@ -99,7 +101,6 @@ export function Header({ onMenuClick }: HeaderProps) {
   const connected = Boolean(linkedInStatus?.isConnected && !linkedInStatus?.isExpired);
   const pageMetadata = routeMetadata[location.pathname] || routeMetadata['/dashboard'];
 
-  // API notifications (from backend)
   const [apiNotifications, setApiNotifications] = useState<ApiNotification[]>([]);
   const [apiUnreadCount, setApiUnreadCount] = useState(0);
 
@@ -110,9 +111,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         setApiNotifications(res.data);
         setApiUnreadCount(res.unread_count);
       }
-    } catch {
-      // Backend may not have this endpoint yet — silently ignore
-    }
+    } catch { /* silently ignore */ }
   }, []);
 
   useEffect(() => {
@@ -134,30 +133,26 @@ export function Header({ onMenuClick }: HeaderProps) {
     try { await notificationsAPI.markAllRead(); } catch { /* ignore */ }
   };
 
-  const localUnread = notifications.filter((n) => !n.read).length;
-  const unreadCount = localUnread + apiUnreadCount;
+  const localUnread  = notifications.filter(n => !n.read).length;
+  const unreadCount  = localUnread + apiUnreadCount;
 
-  const notificationIcon = (type: 'success' | 'error' | 'info') => {
-    if (type === 'success') return Check;
-    if (type === 'error') return XCircle;
-    return Info;
-  };
+  const notificationIcon = (type: 'success' | 'error' | 'info') =>
+    type === 'success' ? Check : type === 'error' ? XCircle : Info;
 
   const apiNotifIcon = (type: 'post_success' | 'post_failure') =>
     type === 'post_success' ? Check : XCircle;
 
   return (
-    <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200 bg-[#f8fafb] backdrop-blur-lg transition-all duration-200 ease-in-out">
+    <header className="sticky top-0 z-30 shrink-0 bg-white border-b border-[#e8eaed] transition-all duration-200">
+
+      {/* Expiry banners */}
       {daysUntilExpiry !== null && daysUntilExpiry > 0 && daysUntilExpiry <= 7 && !bannerDismissed && (
-        <div className="flex items-center justify-between gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200">
+        <div className="flex items-center justify-between gap-2 bg-amber-50 border-b border-amber-200 px-4 py-2 text-[12px] text-amber-800">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
             <span>
               LinkedIn token expires in <strong>{daysUntilExpiry} day{daysUntilExpiry !== 1 ? 's' : ''}</strong>.{' '}
-              <button
-                className="underline font-medium hover:no-underline"
-                onClick={() => navigate('/dashboard/linkedin-vault')}
-              >
+              <button className="underline font-medium hover:no-underline" onClick={() => navigate('/dashboard/linkedin-vault')}>
                 Reconnect now
               </button>
             </span>
@@ -176,70 +171,82 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
       )}
       {daysUntilExpiry !== null && daysUntilExpiry <= 0 && (
-        <div className="flex items-center gap-2 bg-red-50 border-b border-red-200 px-4 py-2 text-xs text-red-800 dark:bg-red-950/30 dark:border-red-800 dark:text-red-200">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-600" />
+        <div className="flex items-center gap-2 bg-rose-50 border-b border-rose-200 px-4 py-2 text-[12px] text-rose-800">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-rose-600" />
           <span>
             LinkedIn token has expired. Scheduled posts are paused.{' '}
-            <button
-              className="underline font-medium hover:no-underline"
-              onClick={() => navigate('/dashboard/linkedin-vault')}
-            >
+            <button className="underline font-medium hover:no-underline" onClick={() => navigate('/dashboard/linkedin-vault')}>
               Reconnect LinkedIn
             </button>
           </span>
         </div>
       )}
-      <div className="relative px-4 py-2 lg:py-2.5 lg:px-8">
 
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 flex-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-10 w-10 rounded-xl p-0 lg:hidden"
-              onClick={onMenuClick}
-              aria-label="Open navigation menu"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
+      {/* Main header row */}
+      <div className="flex items-center justify-between gap-3 px-4 lg:px-5 h-[56px]">
 
-            <div className="flex-1">
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="h-0.5 w-0.5 rounded-full bg-[#0a66c2]" />
-                <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-[#0a66c2]">{pageMetadata.sectionLabel}</p>
-              </div>
-              <h1 className="text-base md:text-xl font-bold tracking-tight text-[#191919] leading-tight mb-0.5 sm:mb-1 line-clamp-1">
+        {/* Left: hamburger + page info */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={onMenuClick}
+            aria-label="Open navigation menu"
+            className="lg:hidden h-8 w-8 flex items-center justify-center rounded-lg hover:bg-[#f3f4f6] text-[#6b7280] transition-colors shrink-0"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#0a66c2]">
+                {pageMetadata.sectionLabel}
+              </span>
+              <span className="text-[#d1d5db]">·</span>
+              <span className="text-[13px] font-medium text-[#374151] truncate hidden sm:block">
                 {pageMetadata.title}
-              </h1>
-              <p className="hidden sm:block text-xs text-[#595959] leading-relaxed">
-                {pageMetadata.description}
-              </p>
+              </span>
             </div>
           </div>
+        </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        {/* Right: actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+
+          {/* Create button */}
+          <button
+            onClick={() => navigate('/dashboard/create-post')}
+            className="hidden sm:flex h-8 items-center gap-1.5 px-3 rounded-lg bg-[#0a66c2] hover:bg-[#0958a8] text-white text-[12px] font-semibold transition-colors"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Create</span>
+          </button>
+
+          {/* Calendar */}
+          <button
+            onClick={() => navigate('/dashboard/content-calendar')}
+            aria-label="Open calendar"
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-[#e8eaed] bg-white hover:bg-[#f3f4f6] text-[#6b7280] transition-colors"
+          >
+            <CalendarDays className="h-4 w-4" />
+          </button>
+
+          {/* Notifications */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="relative h-10 w-10 rounded-full border-gray-400 bg-[#f8fafb] hover:bg-[#f0f3f5]"
+              <button
                 aria-label="Notifications"
+                className="relative h-8 w-8 flex items-center justify-center rounded-lg border border-[#e8eaed] bg-white hover:bg-[#f3f4f6] text-[#6b7280] transition-colors"
               >
-                <Bell className="h-4 w-4 text-black" />
+                <Bell className="h-4 w-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+                  <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
                 )}
-              </Button>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[360px] p-0">
               <div className="flex items-center justify-between px-3 py-2.5">
-                <DropdownMenuLabel className="p-0 text-sm font-semibold">Notifications</DropdownMenuLabel>
+                <DropdownMenuLabel className="p-0 text-[13px] font-semibold text-[#111827]">Notifications</DropdownMenuLabel>
                 {(notifications.length > 0 || apiNotifications.length > 0) && (
-                  <button
-                    className="text-xs text-[#191919] hover:opacity-75"
-                    onClick={handleMarkAllRead}
-                  >
+                  <button className="text-[12px] text-[#0a66c2] hover:underline" onClick={handleMarkAllRead}>
                     Mark all read
                   </button>
                 )}
@@ -247,53 +254,47 @@ export function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenuSeparator />
               {(apiNotifications.length > 0 || notifications.length > 0) ? (
                 <ScrollArea className="max-h-[360px]">
-                  <div className="space-y-0 p-1">
-                    {/* API notifications (from backend) */}
-                    {apiNotifications.slice(0, 25).map((n) => {
+                  <div className="p-1">
+                    {apiNotifications.slice(0, 25).map(n => {
                       const Icon = apiNotifIcon(n.type);
                       const isSuccess = n.type === 'post_success';
                       return (
                         <DropdownMenuItem
                           key={`api-${n.id}`}
-                          className={cn('flex items-start gap-3 rounded-xl px-3 py-3 focus:bg-muted cursor-pointer', !n.read && 'bg-muted/40')}
+                          className={cn('flex items-start gap-3 rounded-xl px-3 py-3 cursor-pointer', !n.read && 'bg-[#f8f9fb]')}
                           onClick={() => handleMarkApiRead(n.id)}
                         >
-                          <div className={cn('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full', isSuccess ? 'bg-primary/10 text-primary' : 'bg-destructive/10 text-destructive')}>
+                          <div className={cn('mt-0.5 h-8 w-8 shrink-0 flex items-center justify-center rounded-full', isSuccess ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600')}>
                             <Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-foreground">{n.title}</p>
-                              {!n.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                              <p className="text-[13px] font-semibold text-[#111827]">{n.title}</p>
+                              {!n.read && <span className="h-2 w-2 rounded-full bg-[#0a66c2] shrink-0" />}
                             </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.body}</p>
+                            <p className="mt-0.5 text-[12px] text-[#9ca3af] leading-relaxed line-clamp-2">{n.body}</p>
                           </div>
                         </DropdownMenuItem>
                       );
                     })}
-                    {/* Local notifications (from post state transitions) */}
-                    {notifications.slice(0, 8).map((notification) => {
+                    {notifications.slice(0, 8).map(notification => {
                       const Icon = notificationIcon(notification.type);
+                      const iconCls = notification.type === 'success' ? 'bg-emerald-50 text-emerald-600' : notification.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-blue-50 text-blue-600';
                       return (
                         <DropdownMenuItem
                           key={notification.id}
-                          className={cn('flex items-start gap-3 rounded-xl px-3 py-3 focus:bg-muted cursor-pointer', !notification.read && 'bg-muted/40')}
+                          className={cn('flex items-start gap-3 rounded-xl px-3 py-3 cursor-pointer', !notification.read && 'bg-[#f8f9fb]')}
                           onClick={() => markNotificationRead(notification.id)}
                         >
-                          <div className={cn(
-                            'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                            notification.type === 'success' && 'bg-primary/10 text-primary',
-                            notification.type === 'error' && 'bg-destructive/10 text-destructive',
-                            notification.type === 'info' && 'bg-tertiary/15 text-tertiary',
-                          )}>
+                          <div className={cn('mt-0.5 h-8 w-8 shrink-0 flex items-center justify-center rounded-full', iconCls)}>
                             <Icon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-semibold text-foreground">{notification.title}</p>
-                              {!notification.read && <span className="h-2 w-2 rounded-full bg-primary shrink-0" />}
+                              <p className="text-[13px] font-semibold text-[#111827]">{notification.title}</p>
+                              {!notification.read && <span className="h-2 w-2 rounded-full bg-[#0a66c2] shrink-0" />}
                             </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed line-clamp-2">{notification.message}</p>
+                            <p className="mt-0.5 text-[12px] text-[#9ca3af] leading-relaxed line-clamp-2">{notification.message}</p>
                           </div>
                         </DropdownMenuItem>
                       );
@@ -302,19 +303,19 @@ export function Header({ onMenuClick }: HeaderProps) {
                 </ScrollArea>
               ) : (
                 <div className="px-4 py-8 text-center">
-                  <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                  <div className="mx-auto h-10 w-10 flex items-center justify-center rounded-full bg-[#f3f4f6] text-[#9ca3af]">
                     <Bell className="h-4 w-4" />
                   </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">No notifications yet</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Published and failed posts will appear here.</p>
+                  <p className="mt-3 text-[13px] font-semibold text-[#111827]">No notifications yet</p>
+                  <p className="mt-1 text-[12px] text-[#9ca3af]">Published and failed posts will appear here.</p>
                 </div>
               )}
               {(notifications.length > 0 || apiNotifications.length > 0) && (
                 <>
                   <DropdownMenuSeparator />
-                  <div className="flex items-center justify-between px-3 py-2">
+                  <div className="px-3 py-2">
                     <button
-                      className="flex items-center gap-1.5 text-xs text-[#191919] hover:opacity-75"
+                      className="flex items-center gap-1.5 text-[12px] text-[#9ca3af] hover:text-rose-600 transition-colors"
                       onClick={() => { clearNotifications(); setApiNotifications([]); setApiUnreadCount(0); }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -326,97 +327,74 @@ export function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button
-            variant="outline"
-            size="icon"
-            className="hidden sm:inline-flex h-10 w-10 rounded-full border-gray-400 bg-[#f8fafb] hover:bg-[#f0f3f5]"
-            onClick={() => navigate('/dashboard/content-calendar')}
-            aria-label="Open calendar"
-          >
-            <CalendarDays className="h-4 w-4 text-black" />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden xl:inline-flex h-10 rounded-full px-4 border-gray-400 bg-[#f8fafb] hover:bg-[#f0f3f5]"
-            onClick={() => navigate('/dashboard/create-post')}
-          >
-            <Sparkles className="mr-1.5 h-3.5 w-3.5 text-black" />
-            Create
-          </Button>
-
+          {/* Theme toggle */}
           <ThemeToggle />
 
-          <div
-            role="status"
-            aria-label={connected ? 'LinkedIn account connected' : 'LinkedIn account not connected'}
-            className="hidden xl:flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs shadow-[var(--shadow-xs)]"
-          >
-            <span className={cn('h-2.5 w-2.5 rounded-full shrink-0', connected ? 'bg-primary' : 'bg-muted-foreground/50')} />
-            <span className="font-medium text-foreground">{connected ? 'Connected' : 'Not connected'}</span>
+          {/* LinkedIn status */}
+          <div className="hidden xl:flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-2.5 py-1.5">
+            <span className={cn('h-2 w-2 rounded-full shrink-0', connected ? 'bg-emerald-500' : 'bg-[#d1d5db]')} />
+            <span className="text-[12px] font-medium text-[#374151]">{connected ? 'Connected' : 'Not connected'}</span>
           </div>
 
+          {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="hidden md:flex items-center gap-2 rounded-full border border-gray-400 bg-[#f8fafb] px-2 py-1.5 shadow-[var(--shadow-xs)] hover:bg-[#f0f3f5] transition-colors outline-none">
-                <div className="h-8 w-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-[11px] font-bold text-primary">
+              <button className="hidden md:flex items-center gap-2 rounded-lg border border-[#e8eaed] bg-white px-2 py-1.5 hover:bg-[#f3f4f6] transition-colors outline-none">
+                <div className="h-6 w-6 rounded-full bg-[#0a66c2]/15 flex items-center justify-center shrink-0 text-[11px] font-bold text-[#0a66c2]">
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </div>
+                <span className="text-[12px] font-medium text-[#374151] hidden lg:block max-w-[80px] truncate">
+                  {user?.name?.split(' ')[0] || 'User'}
+                </span>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" sideOffset={8} className="w-64 p-0 rounded-2xl overflow-hidden shadow-lg border border-border">
-              {/* Profile card header */}
-              <div className="bg-[#f8fafb] px-4 py-4 border-b border-border">
+            <DropdownMenuContent align="end" sideOffset={8} className="w-60 p-0 rounded-xl overflow-hidden shadow-lg border border-[#e8eaed]">
+              <div className="bg-[#fafafa] px-4 py-3.5 border-b border-[#e8eaed]">
                 <div className="flex items-center gap-3">
-                  <div className="h-11 w-11 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                  <div className="h-10 w-10 rounded-full bg-[#0a66c2]/15 flex items-center justify-center shrink-0 text-sm font-bold text-[#0a66c2]">
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{user?.name || 'User'}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{user?.email || ''}</p>
+                    <p className="text-[13px] font-semibold text-[#111827] truncate">{user?.name || 'User'}</p>
+                    <p className="text-[11px] text-[#9ca3af] truncate">{user?.email || ''}</p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', connected ? 'bg-green-500' : 'bg-gray-300')} />
-                      <span className="text-[10px] text-muted-foreground">{connected ? 'LinkedIn connected' : 'LinkedIn not connected'}</span>
+                      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', connected ? 'bg-emerald-500' : 'bg-[#d1d5db]')} />
+                      <span className="text-[10px] text-[#9ca3af]">{connected ? 'LinkedIn connected' : 'Not connected'}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Menu items */}
               <div className="p-1.5 space-y-0.5">
                 <DropdownMenuItem
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
                   onClick={() => navigate('/dashboard/settings')}
                 >
-                  <Sliders className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Settings</span>
+                  <Sliders className="h-3.5 w-3.5 text-[#9ca3af]" />
+                  <span className="text-[13px] text-[#374151]">Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
                   onClick={() => navigate('/dashboard/linkedin-vault')}
                 >
-                  <Linkedin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">LinkedIn Vault</span>
+                  <Linkedin className="h-3.5 w-3.5 text-[#9ca3af]" />
+                  <span className="text-[13px] text-[#374151]">LinkedIn Vault</span>
                 </DropdownMenuItem>
               </div>
 
-              <div className="p-1.5 border-t border-border">
+              <div className="p-1.5 border-t border-[#e8eaed]">
                 <DropdownMenuItem
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/5"
-                  onClick={async () => {
-                    await logout();
-                    navigate('/');
-                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                  onClick={async () => { await logout(); navigate('/'); }}
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span className="text-sm">Sign out</span>
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span className="text-[13px]">Sign out</span>
                 </DropdownMenuItem>
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
-      </div>
       </div>
     </header>
   );

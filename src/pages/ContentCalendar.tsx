@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, createContext, useContext } from 'react';
+import React, { useState, useMemo, useEffect, useRef, createContext, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -26,6 +26,7 @@ import {
   startOfDay,
   isThisWeek,
   isThisMonth,
+  addDays,
 } from 'date-fns';
 import {
   ChevronLeft,
@@ -61,7 +62,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ViewMode = 'month' | 'list' | 'board';
+type ViewMode = 'month' | 'week' | 'list' | 'board';
 
 // ── Status colours ────────────────────────────────────────────────────────────
 
@@ -702,12 +703,196 @@ function DraftQueue({
   );
 }
 
+// ── Week view ─────────────────────────────────────────────────────────────────
+
+const WEEK_START_H = 6;   // 6 AM
+const WEEK_END_H   = 22;  // 10 PM
+const HOUR_PX      = 64;  // px per hour row
+
+const WEEK_COLORS: Record<Post['status'], { bg: string; border: string; text: string }> = {
+  scheduled: { bg: '#eff6ff', border: '#0a66c2', text: '#0a66c2'  },
+  published: { bg: '#f0fdf4', border: '#22c55e', text: '#15803d'  },
+  draft:     { bg: '#fffbeb', border: '#f59e0b', text: '#92400e'  },
+  failed:    { bg: '#fef2f2', border: '#ef4444', text: '#991b1b'  },
+};
+
+function WeekView({
+  weekStart,
+  postsByDate,
+  onPostClick,
+}: {
+  weekStart: Date;
+  postsByDate: Map<string, Post[]>;
+  onPostClick: (post: Post) => void;
+}) {
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    [weekStart],
+  );
+  const hours = useMemo(
+    () => Array.from({ length: WEEK_END_H - WEEK_START_H }, (_, i) => WEEK_START_H + i),
+    [],
+  );
+  const totalH = (WEEK_END_H - WEEK_START_H) * HOUR_PX;
+
+  const now        = new Date();
+  const currentH   = now.getHours() + now.getMinutes() / 60;
+  const todayStr   = format(now, 'yyyy-MM-dd');
+  const nowTop     = (currentH - WEEK_START_H) * HOUR_PX;
+  const showNowLine = currentH >= WEEK_START_H && currentH < WEEK_END_H;
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current) {
+      const offset = Math.max(0, nowTop - 120);
+      scrollRef.current.scrollTop = offset;
+    }
+  }, [nowTop]);
+
+  return (
+    <div className="flex flex-col overflow-hidden">
+      {/* Day-of-week header row */}
+      <div className="grid border-b border-gray-100 bg-white sticky top-0 z-10" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
+        <div className="border-r border-gray-100" />
+        {weekDays.map(day => {
+          const isT   = isToday(day);
+          const dayStr = format(day, 'yyyy-MM-dd');
+          const count  = (postsByDate.get(dayStr) ?? []).length;
+          return (
+            <div
+              key={dayStr}
+              className={cn(
+                'py-3 text-center border-l border-gray-100 select-none',
+                isT && 'bg-[#eff6ff]',
+              )}
+            >
+              <p className={cn('text-[10px] font-semibold uppercase tracking-widest', isT ? 'text-[#0a66c2]' : 'text-gray-400')}>
+                {format(day, 'EEE')}
+              </p>
+              <div className={cn(
+                'mx-auto mt-1 h-8 w-8 flex items-center justify-center rounded-full text-[14px] font-bold',
+                isT ? 'bg-[#0a66c2] text-white' : 'text-gray-800',
+              )}>
+                {format(day, 'd')}
+              </div>
+              {count > 0 && (
+                <div className="mt-1 flex justify-center">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#0a66c2]/40" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Scrollable time grid */}
+      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '580px' }}>
+        <div className="relative grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)', height: totalH }}>
+
+          {/* Hour labels + horizontal grid lines */}
+          {hours.map(h => {
+            const top = (h - WEEK_START_H) * HOUR_PX;
+            const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
+            return (
+              <React.Fragment key={h}>
+                {/* Time label */}
+                <div
+                  className="absolute left-0 w-14 flex items-start justify-end pr-2 pt-0.5 select-none pointer-events-none"
+                  style={{ top }}
+                >
+                  <span className="text-[10px] text-gray-400 font-medium leading-none">{label}</span>
+                </div>
+                {/* Horizontal rule across all columns */}
+                <div
+                  className="absolute pointer-events-none border-t border-gray-100"
+                  style={{ top, left: 56, right: 0 }}
+                />
+              </React.Fragment>
+            );
+          })}
+
+          {/* Day columns */}
+          {weekDays.map((day, colIdx) => {
+            const dayStr  = format(day, 'yyyy-MM-dd');
+            const isT     = dayStr === todayStr;
+            const dayPosts = (postsByDate.get(dayStr) ?? []).filter(p =>
+              p.scheduled_at || p.published_at
+            );
+
+            return (
+              <div
+                key={dayStr}
+                className={cn(
+                  'absolute top-0 bottom-0 border-l border-gray-100',
+                  isT && 'bg-[#eff6ff]/30',
+                )}
+                style={{ left: `calc(56px + ${colIdx} * ((100% - 56px) / 7))`, width: 'calc((100% - 56px) / 7)' }}
+              >
+                {/* Current time line */}
+                {isT && showNowLine && (
+                  <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none" style={{ top: nowTop }}>
+                    <div className="h-2.5 w-2.5 rounded-full bg-[#0a66c2] shrink-0 -ml-1.5 shadow-sm" />
+                    <div className="flex-1 h-[2px] bg-[#0a66c2]" />
+                  </div>
+                )}
+
+                {/* Post event blocks */}
+                {dayPosts.map(post => {
+                  const t      = new Date(post.scheduled_at ?? post.published_at!);
+                  const postH  = t.getHours() + t.getMinutes() / 60;
+                  if (postH < WEEK_START_H || postH >= WEEK_END_H) return null;
+                  const top    = (postH - WEEK_START_H) * HOUR_PX + 2;
+                  const height = HOUR_PX - 6;
+                  const color  = WEEK_COLORS[post.status];
+                  const preview = post.content.replace(/\n+/g, ' ').trim();
+
+                  return (
+                    <div
+                      key={post.id}
+                      className="absolute left-1 right-1 rounded-lg px-2 py-1.5 cursor-pointer hover:brightness-95 transition-all z-10 overflow-hidden"
+                      style={{
+                        top,
+                        height,
+                        backgroundColor: color.bg,
+                        borderLeft: `3px solid ${color.border}`,
+                      }}
+                      onClick={() => onPostClick(post)}
+                      title={post.content}
+                    >
+                      <p className="text-[10px] font-bold leading-none mb-0.5" style={{ color: color.border }}>
+                        {format(t, 'h:mm a')}
+                      </p>
+                      <p
+                        className="text-[11px] font-medium leading-snug"
+                        style={{
+                          color: color.text,
+                          overflow: 'hidden',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                        } as React.CSSProperties}
+                      >
+                        {preview}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── View mode tab ─────────────────────────────────────────────────────────────
 
 const views: { id: ViewMode; label: string; icon: React.ElementType }[] = [
   { id: 'month', label: 'Month', icon: CalendarDays },
-  { id: 'list', label: 'List', icon: LayoutList },
-  { id: 'board', label: 'Board', icon: Trello },
+  { id: 'week',  label: 'Week',  icon: Calendar     },
+  { id: 'list',  label: 'List',  icon: LayoutList   },
+  { id: 'board', label: 'Board', icon: Trello       },
 ];
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -725,9 +910,97 @@ export function ContentCalendar() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentWeekStart, setCurrentWeekStart] = useState(() =>
+    startOfWeek(new Date(), { weekStartsOn: 1 }),
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isFetchingImage, setIsFetchingImage] = useState(false);
+
+  // Blob URL cache — keyed by post ID. Pre-fetched in the background so clicks are instant.
+  const imageBlobCache = useRef<Map<string, string>>(new Map());
+
+  // Revoke all cached blobs when the component unmounts.
+  useEffect(() => {
+    const cache = imageBlobCache.current;
+    return () => { cache.forEach(url => URL.revokeObjectURL(url)); cache.clear(); };
+  }, []);
+
+  // Eagerly fetch images for all posts that have one, using limited concurrency.
+  useEffect(() => {
+    const postsWithImages = posts.filter(p => p.has_image && p.image_url?.startsWith('/'));
+    if (postsWithImages.length === 0) return;
+
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('authToken');
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+    let idx = 0;
+    let cancelled = false;
+
+    const fetchNext = async () => {
+      while (idx < postsWithImages.length && !cancelled) {
+        const post = postsWithImages[idx++];
+        if (imageBlobCache.current.has(post.id)) continue;
+        try {
+          const res = await fetch(`${apiBase}${post.image_url}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            credentials: 'include',
+          });
+          if (!cancelled && res.ok) {
+            const blob = await res.blob();
+            if (!cancelled && blob.size > 0) {
+              imageBlobCache.current.set(post.id, URL.createObjectURL(blob));
+            }
+          }
+        } catch { /* silent */ }
+      }
+    };
+
+    // 3 parallel workers
+    fetchNext(); fetchNext(); fetchNext();
+    return () => { cancelled = true; };
+  }, [posts]);
+
+  const openPostPreview = async (post: Post) => {
+    setSelectedPost(post);
+    setPreviewImageUrl(null);
+    setIsFetchingImage(false);
+
+    if (!post.has_image && !post.image_url) return;
+
+    const raw = post.image_url ?? '';
+
+    if (raw.startsWith('data:') || /^https?:\/\//i.test(raw)) {
+      setPreviewImageUrl(raw);
+      return;
+    }
+
+    if (raw.startsWith('/')) {
+      // Serve from cache if already pre-fetched — instant
+      const cached = imageBlobCache.current.get(post.id);
+      if (cached) { setPreviewImageUrl(cached); return; }
+
+      // Not cached yet (e.g. prefetch still in flight) — fetch on demand
+      setIsFetchingImage(true);
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('authToken');
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+      try {
+        const res = await fetch(`${apiBase}${raw}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const blob = await res.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          imageBlobCache.current.set(post.id, blobUrl);
+          setPreviewImageUrl(blobUrl);
+        }
+      } catch { /* silent */ }
+      finally { setIsFetchingImage(false); }
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: selectedPost ? 999999 : 8 } }),
@@ -883,6 +1156,19 @@ export function ContentCalendar() {
     setSelectedPost(updated);
   };
 
+  const handlePrev = () => {
+    if (viewMode === 'month') setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1));
+    if (viewMode === 'week')  setCurrentWeekStart(d => addDays(d, -7));
+  };
+  const handleNext = () => {
+    if (viewMode === 'month') setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1));
+    if (viewMode === 'week')  setCurrentWeekStart(d => addDays(d, 7));
+  };
+  const handleToday = () => {
+    setCurrentMonth(new Date());
+    setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  };
+
   return (
     <PageTransition>
       <DragDisabledCtx.Provider value={selectedPost !== null}>
@@ -892,189 +1178,198 @@ export function ContentCalendar() {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="space-y-4 animate-fade-in">
+        <div className="flex flex-col gap-3 animate-fade-in h-full">
 
-          {/* ── Draft Queue ──────────────────────────────────── */}
+          {/* Draft Queue */}
           {viewMode === 'month' && unscheduledDrafts.length > 0 && (
             <DraftQueue
               drafts={unscheduledDrafts}
               onEdit={(post) => setEditingPost(post)}
               onSchedule={(post) => navigate(`/dashboard/create-post?prefill=${post.id}`)}
-              onPreview={(post) => setSelectedPost(post)}
+              onPreview={openPostPreview}
             />
           )}
 
-          {/* ── View switcher & controls ──────────────────────── */}
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-0.5 rounded-xl border border-gray-200 bg-gray-50 p-1">
-              {views.map(v => (
-                <button
-                  key={v.id}
-                  onClick={() => setViewMode(v.id)}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all duration-150',
-                    viewMode === v.id
-                      ? 'bg-white text-black shadow-sm border border-gray-200'
-                      : 'text-black hover:text-black',
-                  )}
-                >
-                  <v.icon className="h-3.5 w-3.5" />
-                  {v.label}
-                </button>
-              ))}
-            </div>
+          {/* Main card */}
+          <div className={cn(
+            'bg-white rounded-xl border border-[#e8eaed] shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col flex-1 min-h-0',
+            viewMode !== 'board' && 'overflow-hidden',
+          )}>
 
-            <Button size="sm" onClick={() => navigate('/dashboard/create-post')} className="h-9 rounded-xl bg-[#0a66c2] hover:bg-[#004182] text-white px-4">
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              New post
-            </Button>
-          </div>
+            {/* Unified header bar */}
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-[#e8eaed] shrink-0 flex-wrap">
 
-
-          {/* ── Main Content Area ─────────────────────────────── */}
-          <div className="flex flex-col gap-4">
-            {/* Calendar Container */}
-            <div className={cn('rounded-2xl border border-gray-200 bg-white shadow-sm', viewMode !== 'board' && 'overflow-hidden')}>
-
-            {/* Month view */}
-            {viewMode === 'month' && (
-              <div>
-                {/* Month navigation header */}
-                <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </button>
-                    <h2 className="text-[15px] font-bold min-w-[130px] text-center text-gray-900">
-                      {format(currentMonth, 'MMMM yyyy')}
-                    </h2>
-                    <button
-                      onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-800 transition-colors"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
+              {/* Date navigation (month + week only) */}
+              {(viewMode === 'month' || viewMode === 'week') && (
+                <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => setCurrentMonth(new Date())}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-1 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                    onClick={handlePrev}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg border border-[#e8eaed] text-[#6b7280] hover:bg-[#f8f9fb] hover:text-[#111827] transition-colors"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[13px] font-bold text-[#111827] min-w-[140px] text-center select-none">
+                    {viewMode === 'week'
+                      ? `${format(currentWeekStart, 'MMM d')} – ${format(addDays(currentWeekStart, 6), 'MMM d, yyyy')}`
+                      : format(currentMonth, 'MMMM yyyy')
+                    }
+                  </span>
+                  <button
+                    onClick={handleNext}
+                    className="h-7 w-7 flex items-center justify-center rounded-lg border border-[#e8eaed] text-[#6b7280] hover:bg-[#f8f9fb] hover:text-[#111827] transition-colors"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={handleToday}
+                    className="ml-1 h-7 px-2.5 flex items-center rounded-lg border border-[#e8eaed] text-[12px] font-medium text-[#6b7280] hover:bg-[#f8f9fb] hover:text-[#111827] transition-colors"
                   >
                     Today
                   </button>
                 </div>
+              )}
 
-                {/* Day-of-week header */}
-                <div className="grid grid-cols-7 border-b border-gray-100">
+              {/* View switcher */}
+              <div className="flex items-center gap-0.5 rounded-lg border border-[#e8eaed] bg-[#f8f9fb] p-0.5 ml-auto">
+                {views.map(v => (
+                  <button
+                    key={v.id}
+                    onClick={() => setViewMode(v.id)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-all duration-150',
+                      viewMode === v.id
+                        ? 'bg-white text-[#111827] shadow-sm'
+                        : 'text-[#6b7280] hover:text-[#374151]',
+                    )}
+                  >
+                    <v.icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{v.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* New post */}
+              <Button
+                size="sm"
+                onClick={() => navigate('/dashboard/create-post')}
+                className="h-8 text-[13px] rounded-lg bg-[#0a66c2] hover:bg-[#0958a8] gap-1.5 shrink-0"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">New post</span>
+              </Button>
+            </div>
+
+            {/* Month view */}
+            {viewMode === 'month' && (
+              <div className="flex flex-col flex-1 min-h-0 overflow-auto">
+                <div className="grid grid-cols-7 border-b border-[#f3f4f6] shrink-0">
                   {DAYS_OF_WEEK.map((d, i) => (
                     <div
                       key={d}
                       className={cn(
-                        'py-2.5 text-center text-[11px] font-semibold uppercase tracking-widest',
-                        i === 0 || i === 6 ? 'text-gray-400' : 'text-gray-500',
-                        i > 0 && 'border-l border-gray-100',
+                        'py-2 text-center text-[11px] font-semibold uppercase tracking-widest',
+                        i === 0 || i === 6 ? 'text-[#c0c4cc]' : 'text-[#9ca3af]',
+                        i > 0 && 'border-l border-[#f3f4f6]',
                       )}
                     >
                       {d}
                     </div>
                   ))}
                 </div>
-
-                {/* Calendar grid */}
-                <div className="p-3">
-                  <div className="overflow-x-auto">
-                    <div className="min-w-[560px] grid grid-cols-7 gap-2">
-                      {calendarDays.map(day => (
-                        <CalendarCell
-                          key={day.toISOString()}
-                          date={day}
-                          posts={postsByDate.get(format(day, 'yyyy-MM-dd')) ?? []}
-                          currentMonth={currentMonth}
-                          onPostClick={setSelectedPost}
-                          onDayClick={(ds) => navigate(`/dashboard/create-post?scheduled_date=${ds}`)}
-                        />
-                      ))}
-                    </div>
+                <div className="p-3 overflow-x-auto">
+                  <div className="min-w-[560px] grid grid-cols-7 gap-2">
+                    {calendarDays.map(day => (
+                      <CalendarCell
+                        key={day.toISOString()}
+                        date={day}
+                        posts={postsByDate.get(format(day, 'yyyy-MM-dd')) ?? []}
+                        currentMonth={currentMonth}
+                        onPostClick={openPostPreview}
+                        onDayClick={(ds) => navigate(`/dashboard/create-post?scheduled_date=${ds}`)}
+                      />
+                    ))}
                   </div>
                 </div>
               </div>
             )}
 
+            {/* Week view */}
+            {viewMode === 'week' && (
+              <WeekView
+                weekStart={currentWeekStart}
+                postsByDate={postsByDate}
+                onPostClick={openPostPreview}
+              />
+            )}
+
             {/* List view */}
             {viewMode === 'list' && (
-              <div className="p-4 sm:p-6">
-                <ListView posts={posts} onPostClick={setSelectedPost} />
+              <div className="p-4 sm:p-5 overflow-y-auto flex-1 min-h-0">
+                <ListView posts={posts} onPostClick={openPostPreview} />
               </div>
             )}
 
             {/* Board view */}
             {viewMode === 'board' && (
-              <div className="overflow-x-auto p-4 sm:p-5">
-                <BoardView posts={posts} onPostClick={setSelectedPost} />
+              <div className="overflow-x-auto p-4">
+                <BoardView posts={posts} onPostClick={openPostPreview} />
               </div>
             )}
-            </div>
-
           </div>
         </div>
 
-        {/* ── Preview Modal ──────────────────────────────────── */}
+        {/* Preview Modal */}
         <AnimatePresence>
           {selectedPost && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => setSelectedPost(null)}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setIsFetchingImage(false); }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.25, ease: [0.33, 1, 0.68, 1] }}
-                className="w-full max-w-2xl rounded-2xl border border-gray-200 bg-white shadow-2xl flex flex-col"
+                className="w-full max-w-2xl rounded-2xl border border-[#e8eaed] bg-white shadow-2xl flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 sm:px-6 sm:py-4 shrink-0">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900">Post Preview</h3>
-                  <button
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                    onClick={() => setSelectedPost(null)}
-                  >
-                    <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                <div className="flex items-center justify-between border-b border-[#e8eaed] px-5 py-3.5 shrink-0">
+                  <h3 className="text-[15px] font-bold text-[#111827]">Post Preview</h3>
+                  <button className="h-7 w-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setIsFetchingImage(false); }}>
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="p-3 sm:p-6 bg-gray-50 shrink-0">
+                <div className="p-4 bg-[#f8f9fb] shrink-0">
                   <LinkedInPreview
                     content={selectedPost.content}
                     linkUrl={selectedPost.link_url}
                     postType={resolvePreviewType(selectedPost)}
-                    imagePreviewUrl={resolveImagePreview(selectedPost)}
+                    imagePreviewUrl={previewImageUrl ?? (isFetchingImage ? undefined : resolveImagePreview(selectedPost))}
                     videoUrl={resolveVideoPreview(selectedPost)}
                     authorName={previewName}
                     authorHeadline={previewHeadline}
                     authorAvatar={previewAvatar}
                   />
                 </div>
-                <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div className="border-t border-[#e8eaed] px-5 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className={cn('text-xs capitalize', chipStyle[selectedPost.status])}>
-                      <span className={cn('h-1.5 w-1.5 rounded-full mr-1.5', dotStyle[selectedPost.status])} />
+                    <span className={cn('inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full border', chipStyle[selectedPost.status])}>
+                      <span className={cn('h-1.5 w-1.5 rounded-full', dotStyle[selectedPost.status])} />
                       {statusLabel[selectedPost.status]}
-                    </Badge>
+                    </span>
                     {selectedPost.scheduled_at && (
-                      <span className="text-xs text-gray-600">
+                      <span className="text-[12px] text-[#6b7280]">
                         {format(parseISO(selectedPost.scheduled_at), 'MMM d, h:mm a')}
                       </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     {(selectedPost.status === 'draft' || selectedPost.status === 'scheduled') && (
-                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setEditingPost(selectedPost)}>
+                      <Button size="sm" variant="outline" className="h-7 text-[12px] rounded-lg border-[#e8eaed]" onClick={() => setEditingPost(selectedPost)}>
                         <Pencil className="mr-1 h-3 w-3" />
                         Edit
                       </Button>
                     )}
-                    <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => { setSelectedPost(null); navigate('/dashboard/posts'); }}>
+                    <Button size="sm" className="h-7 text-[12px] rounded-lg bg-[#0a66c2] hover:bg-[#0958a8]" onClick={() => { setSelectedPost(null); navigate('/dashboard/posts'); }}>
                       <ExternalLink className="mr-1 h-3 w-3" />
-                      View All Posts
+                      All posts
                     </Button>
                   </div>
                 </div>
@@ -1087,8 +1382,7 @@ export function ContentCalendar() {
         <DragOverlay dropAnimation={null}>
           {activePost && (
             activePost.status === 'draft' && !activePost.scheduled_at ? (
-              // Dragging from draft queue — show a mini card
-              <div className="w-[220px] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl rotate-2 opacity-95">
+              <div className="w-[200px] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl rotate-2 opacity-95">
                 <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 capitalize mb-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                   {activePost.post_type}

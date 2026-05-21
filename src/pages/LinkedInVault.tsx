@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Shield,
   Trash2,
@@ -14,8 +14,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useLinkedInOAuth } from '../hooks/useLinkedInOAuth';
-import { useAuthStore } from '@/store/useAuthStore';
-import { linkedInAPI } from '@/lib/api';
+import { useDataStore } from '@/store/useDataStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -30,10 +29,8 @@ interface LinkedInProfile {
 
 export function LinkedInVault() {
   const [isTesting, setIsTesting] = useState(false);
-  const [profile, setProfile] = useState<LinkedInProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(false);
 
-  const { user } = useAuthStore();
+  const { linkedInProfile: profile } = useDataStore();
 
   const {
     linkedInStatus,
@@ -45,20 +42,8 @@ export function LinkedInVault() {
     daysUntilExpiry,
     connect,
     disconnect,
-    fetchStatus,
     testConnection,
   } = useLinkedInOAuth();
-
-  useEffect(() => { fetchStatus(); }, []);
-
-  useEffect(() => {
-    if (!isConnected || !user?.id) return;
-    setProfileLoading(true);
-    linkedInAPI.getProfile(user.id)
-      .then((res) => { if (res?.success && res?.data) setProfile(res.data); })
-      .catch(() => {})
-      .finally(() => setProfileLoading(false));
-  }, [isConnected, user?.id]);
 
   const handleConnect = async () => { await connect(); };
   const handleDisconnect = async () => { await disconnect(); };
@@ -110,19 +95,7 @@ export function LinkedInVault() {
             </div>
 
             <div className="px-6 pb-5">
-              {profileLoading ? (
-                <div className="animate-pulse">
-                  <div className="flex items-end justify-between -mt-10 mb-4">
-                    <div className="h-20 w-20 rounded-full bg-[#e0dfdc] border-4 border-white" />
-                    <div className="h-8 w-28 bg-[#e8edf2] rounded-lg mt-6" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-44 bg-[#e8edf2] rounded-full" />
-                    <div className="h-3 w-32 bg-[#e8edf2] rounded-full" />
-                  </div>
-                </div>
-              ) : (
-                <>
+              <>
                   {/* Avatar + actions */}
                   <div className="flex items-end justify-between -mt-10 mb-4 relative z-10">
                     <div className="h-20 w-20 rounded-full border-4 border-white bg-[#0a66c2] flex items-center justify-center shadow-lg overflow-hidden shrink-0">
@@ -192,74 +165,13 @@ export function LinkedInVault() {
                         </span>
                       </div>
                     )}
-                    {expDate && (
-                      <div className="flex items-center gap-1.5">
-                        <Key className="h-3.5 w-3.5 text-[#595959]" />
-                        <span className="text-xs text-[#595959]">
-                          Token expires {expDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                    )}
                   </div>
-                </>
-              )}
+              </>
             </div>
           </div>
 
-          {/* Token health + info row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-            {/* Token health */}
-            <div className={cn(
-              'rounded-xl border p-4 space-y-3',
-              isExpiredNow ? 'border-red-200 bg-red-50'
-              : isExpiringSoon ? 'border-amber-200 bg-amber-50'
-              : 'border-[#dce6f1] bg-[#f8fafc]'
-            )}>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#595959]">Token Health</p>
-                <span className={cn(
-                  'text-xs font-bold',
-                  isExpiredNow ? 'text-red-600' : isExpiringSoon ? 'text-amber-600' : 'text-[#0a66c2]'
-                )}>
-                  {isExpiredNow ? 'Expired' : daysUntilExpiry !== null ? `${daysUntilExpiry}d left` : 'Active'}
-                </span>
-              </div>
-              <div className="h-2 rounded-full bg-[#e0dfdc] overflow-hidden">
-                <div
-                  className={cn(
-                    'h-full rounded-full transition-all',
-                    isExpiredNow ? 'bg-red-500' : isExpiringSoon ? 'bg-amber-500' : 'bg-[#0a66c2]'
-                  )}
-                  style={{ width: `${tokenPercent}%` }}
-                />
-              </div>
-              {(isExpiredNow || isExpiringSoon) && (
-                <div className={cn('flex items-start gap-2 rounded-lg border p-2.5 text-xs',
-                  isExpiredNow ? 'border-red-200 bg-red-100 text-red-700' : 'border-amber-200 bg-amber-100 text-amber-700'
-                )}>
-                  <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                  <span>{isExpiredNow ? 'Reconnect to resume automation.' : `Expires in ${daysUntilExpiry}d — reconnect soon.`}</span>
-                </div>
-              )}
-              {(isExpiredNow || isExpiringSoon) && (
-                <Button
-                  size="sm"
-                  onClick={handleConnect}
-                  disabled={isLoading}
-                  className="w-full h-8 !bg-[#0a66c2] !text-white hover:!bg-[#004182] text-xs"
-                >
-                  <Lock className="mr-1.5 h-3 w-3" />
-                  Reconnect LinkedIn
-                </Button>
-              )}
-              {!isExpiredNow && !isExpiringSoon && (
-                <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-2.5">
-                  <CheckCircle className="h-3.5 w-3.5 text-green-600 shrink-0" />
-                  <span className="text-xs text-green-700 font-medium">Token is healthy</span>
-                </div>
-              )}
-            </div>
+          {/* Info row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             {/* Permissions */}
             <div className="rounded-xl border border-[#dce6f1] bg-[#f8fafc] p-4 space-y-3">

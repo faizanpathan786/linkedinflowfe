@@ -1,0 +1,235 @@
+<h2>Automation Page — Card Redesign</h2>
+<p class="subtitle">3 production-level design directions. Click one to select it.</p>
+
+<div class="cards">
+
+  <!-- Option A: Clean Command Center -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f8fafb;border-radius:10px;padding:14px;font-family:system-ui,sans-serif;">
+
+        <!-- Quick Presets card -->
+        <div style="background:#fff;border:1px solid #e0dfdc;border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div style="width:6px;height:6px;border-radius:50%;background:#0a66c2;"></div>
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#595959;">Quick Presets</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <div style="background:#0a66c2;border-radius:8px;padding:10px 8px;text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#fff;">Conservative</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.75);margin-top:3px;">3/day · 30m delay</div>
+            </div>
+            <div style="background:#f0f4f9;border-radius:8px;padding:10px 8px;text-align:center;border:1.5px solid #dce6f1;">
+              <div style="font-size:10px;font-weight:700;color:#191919;">Standard</div>
+              <div style="font-size:9px;color:#595959;margin-top:3px;">5/day · 10m delay</div>
+            </div>
+            <div style="background:#f0f4f9;border-radius:8px;padding:10px 8px;text-align:center;border:1.5px solid #dce6f1;">
+              <div style="font-size:10px;font-weight:700;color:#191919;">Aggressive</div>
+              <div style="font-size:9px;color:#595959;margin-top:3px;">20/day · 2m delay</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Posting Schedule card -->
+        <div style="background:#fff;border:1px solid #e0dfdc;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:6px;height:6px;border-radius:50%;background:#0a66c2;"></div>
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#595959;">Posting Schedule</span>
+            </div>
+            <div style="width:30px;height:16px;background:#0a66c2;border-radius:8px;"></div>
+          </div>
+          <div style="display:flex;gap:4px;margin-bottom:12px;">
+            <div style="background:#f0f4f9;border:1px solid #dce6f1;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#595959;">Sun</div>
+            <div style="background:#0a66c2;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#fff;">Mon</div>
+            <div style="background:#0a66c2;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#fff;">Tue</div>
+            <div style="background:#0a66c2;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#fff;">Wed</div>
+            <div style="background:#0a66c2;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#fff;">Thu</div>
+            <div style="background:#f0f4f9;border:1px solid #dce6f1;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#595959;">Fri</div>
+            <div style="background:#f0f4f9;border:1px solid #dce6f1;border-radius:6px;padding:4px 7px;font-size:9px;font-weight:600;color:#595959;">Sat</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="background:#f0f4f9;border:1px solid #dce6f1;border-radius:7px;padding:5px 10px;font-size:13px;font-weight:700;color:#191919;">09:30</div>
+              <div style="display:flex;border:1px solid #dce6f1;border-radius:7px;overflow:hidden;font-size:9px;font-weight:700;">
+                <div style="background:#0a66c2;color:#fff;padding:4px 7px;">AM</div>
+                <div style="background:#f0f4f9;color:#595959;padding:4px 7px;">PM</div>
+              </div>
+            </div>
+            <div style="background:#0a66c2;color:#fff;border-radius:7px;padding:5px 12px;font-size:9px;font-weight:700;">Save</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Clean Command Center</h3>
+      <p>Dot-accent section labels, elevated active preset, tight spacing. Minimal & sharp.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Gradient Header Cards -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f4f6f9;border-radius:10px;padding:14px;font-family:system-ui,sans-serif;">
+
+        <div style="background:#fff;border:1px solid #dce6f1;border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 16px rgba(10,102,194,0.08);">
+          <div style="background:linear-gradient(135deg,#0a66c2 0%,#0d80e0 100%);padding:10px 14px;display:flex;align-items:center;gap:8px;">
+            <div style="width:22px;height:22px;background:rgba(255,255,255,0.2);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+              <div style="width:10px;height:10px;border-radius:2px;background:#fff;"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:#fff;letter-spacing:.02em;">Quick Presets</span>
+          </div>
+          <div style="padding:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <div style="border:2px solid #0a66c2;border-radius:8px;padding:9px;text-align:center;background:#eef4fb;">
+              <div style="font-size:10px;font-weight:700;color:#0a66c2;">Conservative</div>
+              <div style="font-size:9px;color:#595959;margin-top:2px;">3/day</div>
+            </div>
+            <div style="border:1px solid #e0dfdc;border-radius:8px;padding:9px;text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#191919;">Standard</div>
+              <div style="font-size:9px;color:#595959;margin-top:2px;">5/day</div>
+            </div>
+            <div style="border:1px solid #e0dfdc;border-radius:8px;padding:9px;text-align:center;">
+              <div style="font-size:10px;font-weight:700;color:#191919;">Aggressive</div>
+              <div style="font-size:9px;color:#595959;margin-top:2px;">20/day</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #dce6f1;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(10,102,194,0.08);">
+          <div style="background:linear-gradient(135deg,#0a66c2 0%,#0d80e0 100%);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:22px;height:22px;background:rgba(255,255,255,0.2);border-radius:6px;"></div>
+              <span style="font-size:11px;font-weight:700;color:#fff;">Posting Schedule</span>
+            </div>
+            <div style="width:28px;height:15px;background:rgba(255,255,255,0.35);border-radius:8px;"></div>
+          </div>
+          <div style="padding:12px;">
+            <div style="display:flex;gap:3px;margin-bottom:10px;">
+              <div style="background:#f8fafc;border:1px solid #dce6f1;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#595959;">S</div>
+              <div style="background:#0a66c2;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#fff;">M</div>
+              <div style="background:#0a66c2;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#fff;">T</div>
+              <div style="background:#0a66c2;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#fff;">W</div>
+              <div style="background:#0a66c2;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#fff;">T</div>
+              <div style="background:#f8fafc;border:1px solid #dce6f1;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#595959;">F</div>
+              <div style="background:#f8fafc;border:1px solid #dce6f1;border-radius:5px;padding:4px 6px;font-size:9px;font-weight:600;color:#595959;">S</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div style="background:#f8fafc;border:1px solid #dce6f1;border-radius:8px;display:flex;align-items:center;gap:4px;padding:5px 8px;">
+                <span style="font-size:13px;font-weight:700;color:#191919;font-variant-numeric:tabular-nums;">09</span>
+                <span style="font-size:13px;font-weight:700;color:#0a66c2;">:</span>
+                <span style="font-size:13px;font-weight:700;color:#191919;font-variant-numeric:tabular-nums;">30</span>
+              </div>
+              <div style="display:flex;border:1px solid #dce6f1;border-radius:7px;overflow:hidden;font-size:9px;font-weight:700;">
+                <div style="background:#0a66c2;color:#fff;padding:4px 7px;">AM</div>
+                <div style="color:#595959;padding:4px 7px;">PM</div>
+              </div>
+              <div style="margin-left:auto;background:linear-gradient(135deg,#0a66c2,#0d80e0);color:#fff;border-radius:7px;padding:5px 12px;font-size:9px;font-weight:700;">Save Schedule</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Gradient Header Cards</h3>
+      <p>Blue gradient card headers with icon badges. Premium, SaaS-dashboard feel.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Structured Sections -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#f1f4f8;border-radius:10px;padding:14px;font-family:system-ui,sans-serif;">
+
+        <div style="background:#fff;border:1px solid #e0dfdc;border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f0ee;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:28px;height:28px;background:#eef4fb;border:1px solid #dce6f1;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                <div style="width:12px;height:12px;border-radius:3px;background:#0a66c2;"></div>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#191919;">Quick Presets</div>
+                <div style="font-size:9px;color:#595959;">Apply automation profile</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">
+            <div style="border:2px solid #0a66c2;border-radius:8px;padding:10px;background:#f0f7ff;">
+              <div style="font-size:10px;font-weight:800;color:#0a66c2;margin-bottom:4px;">Conservative</div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:8px;color:#595959;background:#e8f0fa;border-radius:3px;padding:1px 4px;display:inline-block;">3/day</span>
+                <span style="font-size:8px;color:#595959;background:#e8f0fa;border-radius:3px;padding:1px 4px;display:inline-block;">30m delay</span>
+              </div>
+            </div>
+            <div style="border:1px solid #e0dfdc;border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:#191919;margin-bottom:4px;">Standard</div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:8px;color:#595959;">5/day</span>
+                <span style="font-size:8px;color:#595959;">10m delay</span>
+              </div>
+            </div>
+            <div style="border:1px solid #e0dfdc;border-radius:8px;padding:10px;">
+              <div style="font-size:10px;font-weight:700;color:#191919;margin-bottom:4px;">Aggressive</div>
+              <div style="display:flex;flex-direction:column;gap:2px;">
+                <span style="font-size:8px;color:#595959;">20/day</span>
+                <span style="font-size:8px;color:#595959;">2m delay</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e0dfdc;border-radius:12px;padding:14px;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid #f0f0ee;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div style="width:28px;height:28px;background:#eef4fb;border:1px solid #dce6f1;border-radius:8px;"></div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#191919;">Posting Schedule</div>
+                <div style="font-size:9px;color:#595959;">Mon–Thu at 9:30 AM · Next: Mon May 20</div>
+              </div>
+            </div>
+            <div style="width:30px;height:16px;background:#0a66c2;border-radius:8px;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#8a8a8a;font-weight:600;margin-bottom:6px;">Active Days</div>
+            <div style="display:flex;gap:4px;">
+              <div style="background:#f4f6f9;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:600;color:#8a8a8a;">Sun</div>
+              <div style="background:#0a66c2;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#fff;">Mon</div>
+              <div style="background:#0a66c2;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#fff;">Tue</div>
+              <div style="background:#0a66c2;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#fff;">Wed</div>
+              <div style="background:#0a66c2;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:700;color:#fff;">Thu</div>
+              <div style="background:#f4f6f9;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:600;color:#8a8a8a;">Fri</div>
+              <div style="background:#f4f6f9;border-radius:6px;padding:4px 8px;font-size:9px;font-weight:600;color:#8a8a8a;">Sat</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#8a8a8a;font-weight:600;margin-bottom:6px;">Post Time</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div style="border:1px solid #dce6f1;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;align-items:center;background:#f8fafc;">
+                  <div style="padding:2px 10px;font-size:8px;color:#595959;">▲</div>
+                  <div style="background:#fff;border-top:1px solid #dce6f1;border-bottom:1px solid #dce6f1;padding:3px 10px;font-size:13px;font-weight:700;color:#191919;">09</div>
+                  <div style="padding:2px 10px;font-size:8px;color:#595959;">▼</div>
+                </div>
+                <span style="font-size:14px;font-weight:900;color:#191919;">:</span>
+                <div style="border:1px solid #dce6f1;border-radius:8px;overflow:hidden;display:flex;flex-direction:column;align-items:center;background:#f8fafc;">
+                  <div style="padding:2px 10px;font-size:8px;color:#595959;">▲</div>
+                  <div style="background:#fff;border-top:1px solid #dce6f1;border-bottom:1px solid #dce6f1;padding:3px 10px;font-size:13px;font-weight:700;color:#191919;">30</div>
+                  <div style="padding:2px 10px;font-size:8px;color:#595959;">▼</div>
+                </div>
+                <div style="border:1px solid #dce6f1;border-radius:8px;overflow:hidden;font-size:9px;font-weight:700;display:flex;flex-direction:column;">
+                  <div style="background:#0a66c2;color:#fff;padding:4px 8px;border-bottom:1px solid #dce6f1;">AM</div>
+                  <div style="color:#595959;padding:4px 8px;">PM</div>
+                </div>
+              </div>
+              <div style="background:#0a66c2;color:#fff;border-radius:7px;padding:6px 14px;font-size:9px;font-weight:700;">Save Schedule</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Structured Sections</h3>
+      <p>Icon-badge card headers with divider lines, section labels, and "Next post" summary line. Most informative.</p>
+    </div>
+  </div>
+
+</div>

@@ -40,13 +40,13 @@ const TESTIMONIALS = [
     name: "Sarah Jenkins", role: "Founder & CEO", initials: "SJ",
     color: "from-violet-500/20 to-purple-500/10",
     flipDir: -1,
-    quote: "I went from posting once a month to every day — without spending more time. In 6 weeks my follower count doubled and I closed 2 inbound deals directly from LinkedIn.",
+    quote: "I went from posting once a month to every day, without spending more time. In 6 weeks my follower count doubled and I closed 2 inbound deals directly from LinkedIn.",
   },
   {
     name: "Marcus Wei", role: "Growth Marketer", initials: "MW",
     color: "from-blue-500/20 to-cyan-500/10",
     flipDir: 0,
-    quote: "The analytics told me carousels outperform text posts 3x on my profile. I doubled down and hit 400% reach growth in one month. I don't guess anymore — I just look at the data.",
+    quote: "The analytics told me carousels outperform text posts 3x on my profile. I doubled down and hit 400% reach growth in one month. I don't guess anymore, I just look at the data.",
   },
   {
     name: "Elena Rodriguez", role: "B2B Sales Leader", initials: "ER",

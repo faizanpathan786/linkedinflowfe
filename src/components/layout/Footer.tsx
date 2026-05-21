@@ -14,18 +14,16 @@ const LINKS = {
     { label: "Guides",          href: "#" },
   ],
   Company: [
-    { label: "About",            href: "#"       },
-    { label: "Contact",          href: "#contact" },
-    { label: "Privacy Policy",   href: "#"       },
-    { label: "Terms of Service", href: "#"       },
+    { label: "About",            href: "#"                      },
+    { label: "Contact",          href: "#contact"               },
+    { label: "Privacy Policy",   href: "/legal/privacy-policy"  },
+    { label: "Terms of Service", href: "/legal/user-agreement"  },
   ],
 };
 
 export function Footer() {
   return (
     <footer className="relative bg-[#1b1f23] text-white overflow-hidden">
-      {/* Gradient top accent */}
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-[#0a66c2]/50 to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
@@ -70,12 +68,21 @@ export function Footer() {
               <ul className="space-y-3">
                 {items.map(({ label, href }) => (
                   <li key={label}>
-                    <a
-                      href={href}
-                      className="text-sm text-[#86888a] hover:text-[#70b5f9] transition-colors duration-200"
-                    >
-                      {label}
-                    </a>
+                    {href.startsWith('/') ? (
+                      <Link
+                        to={href}
+                        className="text-sm text-[#86888a] hover:text-[#70b5f9] transition-colors duration-200"
+                      >
+                        {label}
+                      </Link>
+                    ) : (
+                      <a
+                        href={href}
+                        className="text-sm text-[#86888a] hover:text-[#70b5f9] transition-colors duration-200"
+                      >
+                        {label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

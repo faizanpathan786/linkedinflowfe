@@ -1,0 +1,190 @@
+<style>
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 24px 0;
+  }
+  .palette-card {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .palette-card:hover { transform: translateY(-3px); box-shadow: 0 12px 30px rgba(0,0,0,0.15); }
+  .palette-card.selected { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.3); }
+  .palette-preview {
+    height: 160px;
+    display: flex;
+    flex-direction: column;
+  }
+  .palette-sidebar {
+    width: 60px;
+    flex-shrink: 0;
+  }
+  .palette-main {
+    display: flex;
+    flex: 1;
+  }
+  .palette-content-area {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .mock-metric {
+    height: 36px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .mock-chart {
+    flex: 1;
+    border-radius: 6px;
+    opacity: 0.5;
+  }
+  .palette-swatches {
+    display: flex;
+    gap: 0;
+    height: 8px;
+  }
+  .swatch { flex: 1; }
+  .palette-info {
+    padding: 14px 16px;
+    background: #fff;
+  }
+  .palette-info h3 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+  .palette-info p { margin: 0; font-size: 12px; color: #6b7280; }
+  .palette-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+</style>
+
+<h2>Which color direction feels right?</h2>
+<p class="subtitle">Pick the overall palette that best fits the professional dashboard you're aiming for</p>
+
+<div class="palette-grid">
+
+  <!-- Option A: Deep Indigo/Purple (as requested) -->
+  <div class="palette-card option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="palette-preview">
+      <div class="palette-swatches">
+        <div class="swatch" style="background:#4C3AFF"></div>
+        <div class="swatch" style="background:#7C6FFF"></div>
+        <div class="swatch" style="background:#10B981"></div>
+        <div class="swatch" style="background:#F59E0B"></div>
+        <div class="swatch" style="background:#F3F4F6"></div>
+      </div>
+      <div class="palette-main">
+        <div class="palette-sidebar" style="background:#4C3AFF">
+          <div style="padding:8px 6px;display:flex;flex-direction:column;gap:6px">
+            <div style="height:6px;background:rgba(255,255,255,0.9);border-radius:3px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.4);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.4);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.4);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.4);border-radius:2px"></div>
+          </div>
+        </div>
+        <div class="palette-content-area" style="background:#F9FAFB">
+          <div class="mock-metric" style="background:#fff;border:1px solid #E5E7EB"></div>
+          <div style="display:flex;gap:6px;flex:1">
+            <div class="mock-chart" style="background:#4C3AFF;opacity:0.15;border-radius:6px;flex:1"></div>
+            <div class="mock-chart" style="background:#10B981;opacity:0.2;border-radius:6px;flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="palette-info">
+      <h3>Deep Indigo</h3>
+      <p>Bold purple-blue sidebar, clean white content. High contrast, very modern.</p>
+      <div class="palette-tags">
+        <span class="tag" style="background:#ede9fe;color:#4C3AFF">Bold</span>
+        <span class="tag" style="background:#d1fae5;color:#065f46">Modern</span>
+        <span class="tag" style="background:#fef3c7;color:#92400e">High contrast</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Slate/Navy (more conservative corporate) -->
+  <div class="palette-card option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="palette-preview">
+      <div class="palette-swatches">
+        <div class="swatch" style="background:#1E293B"></div>
+        <div class="swatch" style="background:#3B82F6"></div>
+        <div class="swatch" style="background:#10B981"></div>
+        <div class="swatch" style="background:#F59E0B"></div>
+        <div class="swatch" style="background:#F8FAFC"></div>
+      </div>
+      <div class="palette-main">
+        <div class="palette-sidebar" style="background:#1E293B">
+          <div style="padding:8px 6px;display:flex;flex-direction:column;gap:6px">
+            <div style="height:6px;background:rgba(255,255,255,0.9);border-radius:3px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.3);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.3);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.3);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.3);border-radius:2px"></div>
+          </div>
+        </div>
+        <div class="palette-content-area" style="background:#F8FAFC">
+          <div class="mock-metric" style="background:#fff;border:1px solid #E2E8F0"></div>
+          <div style="display:flex;gap:6px;flex:1">
+            <div class="mock-chart" style="background:#3B82F6;opacity:0.2;border-radius:6px;flex:1"></div>
+            <div class="mock-chart" style="background:#10B981;opacity:0.2;border-radius:6px;flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="palette-info">
+      <h3>Dark Slate Navy</h3>
+      <p>Deep charcoal sidebar, crisp blue accents. Corporate, trustworthy feel.</p>
+      <div class="palette-tags">
+        <span class="tag" style="background:#e0f2fe;color:#0c4a6e">Corporate</span>
+        <span class="tag" style="background:#f1f5f9;color:#334155">Trustworthy</span>
+        <span class="tag" style="background:#fce7f3;color:#9d174d">Classic</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option C: Soft Blue-Gray (LinkedIn-adjacent, lighter) -->
+  <div class="palette-card option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="palette-preview">
+      <div class="palette-swatches">
+        <div class="swatch" style="background:#2563EB"></div>
+        <div class="swatch" style="background:#60A5FA"></div>
+        <div class="swatch" style="background:#10B981"></div>
+        <div class="swatch" style="background:#F59E0B"></div>
+        <div class="swatch" style="background:#EFF6FF"></div>
+      </div>
+      <div class="palette-main">
+        <div class="palette-sidebar" style="background:#1D4ED8">
+          <div style="padding:8px 6px;display:flex;flex-direction:column;gap:6px">
+            <div style="height:6px;background:rgba(255,255,255,0.95);border-radius:3px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.45);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.45);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.45);border-radius:2px"></div>
+            <div style="height:4px;background:rgba(255,255,255,0.45);border-radius:2px"></div>
+          </div>
+        </div>
+        <div class="palette-content-area" style="background:#EFF6FF">
+          <div class="mock-metric" style="background:#fff;border:1px solid #BFDBFE"></div>
+          <div style="display:flex;gap:6px;flex:1">
+            <div class="mock-chart" style="background:#2563EB;opacity:0.2;border-radius:6px;flex:1"></div>
+            <div class="mock-chart" style="background:#10B981;opacity:0.2;border-radius:6px;flex:1"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="palette-info">
+      <h3>LinkedIn Blue Evolved</h3>
+      <p>Richer blue than current, light blue-tinted background. Familiar but elevated.</p>
+      <div class="palette-tags">
+        <span class="tag" style="background:#dbeafe;color:#1e40af">Familiar</span>
+        <span class="tag" style="background:#d1fae5;color:#065f46">Clean</span>
+        <span class="tag" style="background:#ede9fe;color:#4C3AFF">Elevated</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="font-size:13px;margin-top:8px">All options use the same green/amber/red for status badges (published/draft/failed) — only the primary brand color and sidebar change.</p>

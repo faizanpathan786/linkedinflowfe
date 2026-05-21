@@ -16,7 +16,12 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-const footerLinks = ['User Agreement', 'Privacy Policy', 'Cookie Policy', 'Help Center'];
+const footerLinks = [
+  { label: 'User Agreement',  to: '/legal/user-agreement' },
+  { label: 'Privacy Policy',  to: '/legal/privacy-policy' },
+  { label: 'Cookie Policy',   to: '/legal/cookie-policy'  },
+  { label: 'Help Center',     to: '/legal/help-center'    },
+];
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -45,28 +50,24 @@ export function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen dashboard-shell flex items-center justify-center p-4 sm:p-8">
-      <div className="w-full max-w-5xl bg-[#ffffff] rounded-3xl border border-[#e0dfdc] shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col md:flex-row">
+    <div className="h-screen overflow-hidden bg-[#f4efe6] lg:grid lg:grid-cols-2">
+      <AuthLeftPanel />
 
-        <AuthLeftPanel />
+      <div className="flex h-full items-center justify-center overflow-hidden bg-[#eef3f8] px-5 py-6 sm:px-10 lg:px-12">
+        <div className="w-full max-w-[390px]">
+          <div className="mb-6 space-y-2.5">
+            <h1 className="text-[32px] font-semibold tracking-tight text-[#101010] sm:text-[40px]">
+              Welcome back
+            </h1>
+            <p className="max-w-md text-sm leading-6 text-[#595959]">
+              Sign in to your LinkedInFlow account and continue building your content system.
+            </p>
+          </div>
 
-        {/* ── Right: form panel ── */}
-        <div className="md:w-[58%] flex flex-col px-8 py-10 sm:px-12 sm:py-12 bg-[#ffffff]">
-
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="w-full max-w-[360px] mx-auto">
-
-              <h1 className="text-[30px] font-bold text-[#191919] leading-tight tracking-tight">
-                Welcome back
-              </h1>
-              <p className="mt-1.5 mb-8 text-sm text-[#595959]">
-                Sign in to your LinkedInFlow account
-              </p>
-
-              <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
                 {/* Email */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.25">
                   <label htmlFor="li-email" className="block text-[13px] font-semibold text-[#374151]">
                     Email or Phone
                   </label>
@@ -76,7 +77,7 @@ export function LoginForm() {
                     placeholder="you@example.com"
                     autoComplete="email"
                     {...register('email')}
-                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f8fafc] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
+                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f3f2ee] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
                   />
                   {errors.email && (
                     <p className="text-xs text-red-500">{errors.email.message}</p>
@@ -84,7 +85,7 @@ export function LoginForm() {
                 </div>
 
                 {/* Password */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.25">
                   <label htmlFor="li-password" className="block text-[13px] font-semibold text-[#374151]">
                     Password
                   </label>
@@ -95,7 +96,7 @@ export function LoginForm() {
                       placeholder="••••••••"
                       autoComplete="current-password"
                       {...register('password')}
-                      className="w-full h-11 px-3.5 pr-11 rounded-full text-sm bg-[#f8fafc] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
+                      className="w-full h-11 px-3.5 pr-11 rounded-full text-sm bg-[#f3f2ee] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
                     />
                     <button
                       type="button"
@@ -113,7 +114,7 @@ export function LoginForm() {
 
                 {/* Forgot password */}
                 <div className="flex justify-end -mt-1">
-                  <Link to="#" className="text-[13px] font-medium text-[#0a66c2] hover:text-[#004182] hover:underline">
+                  <Link to="/forgot-password" className="text-[13px] font-medium text-[#0a66c2] hover:text-[#004182] hover:underline">
                     Forgot password?
                   </Link>
                 </div>
@@ -140,15 +141,12 @@ export function LoginForm() {
                   </Link>
                 </div>
 
-              </form>
-            </div>
-          </div>
+          </form>
 
-          {/* Footer */}
-          <div className="mt-8 flex flex-wrap justify-center gap-x-3 gap-y-1">
+          <div className="mt-5 flex flex-wrap justify-center gap-x-3 gap-y-1">
             {footerLinks.map((item) => (
-              <Link key={item} to="#" className="text-[11px] text-[#86888a] hover:text-[#595959] hover:underline">
-                {item}
+              <Link key={item.label} to={item.to} className="text-[11px] text-[#86888a] hover:text-[#595959] hover:underline">
+                {item.label}
               </Link>
             ))}
           </div>

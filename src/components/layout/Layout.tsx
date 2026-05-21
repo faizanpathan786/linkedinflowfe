@@ -40,8 +40,8 @@ export function Layout() {
         />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-transparent transition-all duration-200 ease-in-out">
           <Header onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto bg-transparent">
-            <div className="w-full h-full p-4 lg:p-7">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-transparent">
+            <div className="w-full h-full p-3 lg:p-4">
               <Outlet />
             </div>
           </main>

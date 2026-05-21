@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link2, PenTool, BarChart3 } from "lucide-react";
 
@@ -7,7 +7,7 @@ const steps = [
     icon: <Link2 className="w-7 h-7 text-[#0a66c2]" />,
     label: "Step 1",
     title: "Link your account",
-    description: "One-click OAuth. 60 seconds flat. Your LinkedIn is connected — no passwords stored, no risk, no IT required.",
+    description: "One-click OAuth. 60 seconds flat. Your LinkedIn is connected, no passwords stored, no risk, no IT required.",
   },
   {
     icon: <PenTool className="w-7 h-7 text-[#0a66c2]" />,
@@ -19,7 +19,7 @@ const steps = [
     icon: <BarChart3 className="w-7 h-7 text-[#0a66c2]" />,
     label: "Step 3",
     title: "Grow while you sleep",
-    description: "We publish at peak engagement times and show you exactly which posts drive followers — so you do more of what works.",
+    description: "We publish at peak engagement times and show you exactly which posts drive followers so you do more of what works.",
   },
 ];
 
@@ -27,9 +27,9 @@ const INTERVAL_MS = 3500;
 const VP = { once: false, amount: 0 } as const;
 
 const cardVariants = {
-  enter:  { opacity: 0, y: 28,  scale: 0.96, filter: "blur(8px)"  },
-  center: { opacity: 1, y: 0,   scale: 1,    filter: "blur(0px)"  },
-  exit:   { opacity: 0, y: -20, scale: 0.97, filter: "blur(6px)"  },
+  enter:  { opacity: 0, scale: 0.96, filter: "blur(8px)"  },
+  center: { opacity: 1, scale: 1,    filter: "blur(0px)"  },
+  exit:   { opacity: 0, scale: 0.97, filter: "blur(6px)"  },
 };
 
 export function HowItWorks() {
@@ -46,20 +46,20 @@ export function HowItWorks() {
 
         <motion.div
           className="text-center mb-16"
-          initial={{ opacity: 0, y: 60, filter: "blur(10px)" }}
-          whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: -18 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={VP}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
           <motion.p
             className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0a66c2] mb-3"
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: -18 }} whileInView={{ opacity: 1, y: 0 }}
             viewport={VP} transition={{ duration: 0.5, delay: 0.1 }}
           >
             How it works
           </motion.p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-[#191919]">Up and running in 3 steps</h2>
-          <p className="text-lg text-[#595959]">From zero to posting consistently — in less time than your morning coffee.</p>
+          <p className="text-lg text-[#595959]">From zero to posting consistently, in less time than your morning coffee.</p>
         </motion.div>
 
         {/* Step pills */}
@@ -71,10 +71,10 @@ export function HowItWorks() {
               key={i}
               onClick={() => setActive(i)}
               className="relative z-10 flex flex-col items-center text-center focus:outline-none group"
-              initial={{ opacity: 0, y: 50, scale: 0.88 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              initial={{ opacity: 0, y: -18 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={VP}
-              transition={{ duration: 0.65, delay: i * 0.14, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: 0.5, delay: i * 0.1, ease: [0.22, 1, 0.36, 1] }}
             >
               <motion.div
                 animate={{
@@ -113,10 +113,10 @@ export function HowItWorks() {
         {/* Glass card */}
         <motion.div
           className="relative flex justify-center"
-          initial={{ opacity: 0, scale: 0.88, y: 60, filter: "blur(14px)" }}
-          whileInView={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+          whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           viewport={VP}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.7, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="absolute inset-x-[10%] -top-6 h-32 bg-[#0a66c2]/8 blur-3xl rounded-full pointer-events-none" />
           <div
@@ -138,7 +138,7 @@ export function HowItWorks() {
                   transition={{
                     duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94],
                     opacity: { duration: 0.35 }, filter: { duration: 0.4 },
-                    y: { duration: 0.45, delay: 0.04 }, scale: { duration: 0.45, delay: 0.04 },
+                    scale: { duration: 0.45, delay: 0.04 },
                   }}
                   className="flex flex-col items-center text-center w-full"
                 >
