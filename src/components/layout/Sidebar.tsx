@@ -65,7 +65,7 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
     const isActive = location.pathname === itemPath;
 
     const handleClick = (e: MouseEvent) => {
-      if (item.href === '/dashboard/create-post' && linkedInStatus !== null && !isLinkedInConnected) {
+      if (item.href === '/dashboard/create-post' && !isLinkedInConnected) {
         e.preventDefault();
         setShowGate(true);
         return;

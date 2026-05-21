@@ -107,7 +107,7 @@ export function Dashboard() {
   const [showGate, setShowGate] = useState(false);
 
   const goToCreatePost = () => {
-    if (linkedInStatus !== null && !isLinkedInConnected) {
+    if (!isLinkedInConnected) {
       setShowGate(true);
     } else {
       navigate('/dashboard/create-post');
