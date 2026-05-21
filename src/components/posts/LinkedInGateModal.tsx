@@ -1,5 +1,4 @@
 import { Linkedin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -8,13 +7,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useLinkedInOAuth } from '@/hooks/useLinkedInOAuth';
 
 interface LinkedInGateModalProps {
   onDismiss: () => void;
 }
 
 export function LinkedInGateModal({ onDismiss }: LinkedInGateModalProps) {
-  const navigate = useNavigate();
+  const { connect, isLoading } = useLinkedInOAuth();
 
   return (
     <Dialog open onOpenChange={() => {}}>
@@ -41,7 +41,8 @@ export function LinkedInGateModal({ onDismiss }: LinkedInGateModalProps) {
         <div className="flex flex-col gap-2 mt-2">
           <Button
             className="w-full bg-[#0a66c2] hover:bg-[#004182] text-white"
-            onClick={() => navigate('/dashboard/linkedin-vault')}
+            onClick={connect}
+            disabled={isLoading}
           >
             Connect LinkedIn
           </Button>
