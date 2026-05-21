@@ -328,9 +328,7 @@ export function CreatePost() {
   const linkUrl = watch('link_url');
   const videoUrl = watch('video_url');
 
-  const linkedInStatusKnown = linkedInStatus !== null;
-
-  if (linkedInStatusKnown && !isLinkedInConnected) {
+  if (linkedInStatus !== null && !isLinkedInConnected) {
     return <LinkedInGateModal onDismiss={() => navigate('/dashboard')} />;
   }
 
