@@ -21,8 +21,6 @@ import {
   Video,
   FileText,
   ListOrdered,
-  BookMarked,
-  Trash2,
   ExternalLink,
   RotateCcw,
   Wand2,
@@ -38,8 +36,6 @@ import { useDropzone } from 'react-dropzone';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LinkedInPreview } from '@/components/posts/LinkedInPreview';
-import { loadTemplates, deleteTemplate, type PostTemplate } from '@/lib/templates';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { PostAnalyzer } from '@/components/posts/PostAnalyzer';
 import { PageTransition } from '@/components/ui/magic/page-transition';
 import { ImportModal } from '@/components/posts/ImportModal';
@@ -106,27 +102,9 @@ export function CreatePost() {
   );
   const [useQueue, setUseQueue] = useState(false);
 
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [templates, setTemplates] = useState<PostTemplate[]>([]);
   const [importOpen, setImportOpen] = useState(false);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
 
-  const openTemplates = () => {
-    setTemplates(loadTemplates());
-    setTemplatesOpen(true);
-  };
-
-  const applyTemplate = (tpl: PostTemplate) => {
-    setValue('content', tpl.content);
-    setMediaType(tpl.post_type as MediaType);
-    setTemplatesOpen(false);
-    toast.success('Template applied.');
-  };
-
-  const removeTemplate = (id: string) => {
-    deleteTemplate(id);
-    setTemplates(prev => prev.filter(t => t.id !== id));
-  };
 
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, setValue, reset } =
@@ -381,13 +359,6 @@ export function CreatePost() {
             className="h-8 flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-3 text-[12px] font-medium text-[#374151] hover:bg-[#f8f9fb] transition-colors"
           >
             Import
-          </button>
-          <button
-            type="button"
-            onClick={openTemplates}
-            className="h-8 flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-3 text-[12px] font-medium text-[#374151] hover:bg-[#f8f9fb] transition-colors"
-          >
-            <BookMarked className="h-3.5 w-3.5" /> Templates
           </button>
           {isLinkedInConnected ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shrink-0">
@@ -807,67 +778,10 @@ export function CreatePost() {
               </div>
             </div>
 
-            {/* Post stats */}
-            {content && (
-              <div className="rounded-xl border border-[#e0dfdc] bg-white shadow-[0_4px_20px_rgba(0,0,0,0.06)] p-4 space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-[#595959]">Post stats</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-lg border border-[#dce6f1] bg-[#f8fafc] p-3">
-                    <p className="text-[10px] text-[#595959] mb-0.5">Characters</p>
-                    <p className={cn('text-xl font-bold leading-none', charDanger ? 'text-red-600' : charWarning ? 'text-amber-600' : 'text-green-600')}>
-                      {charCount}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-[#dce6f1] bg-[#f8fafc] p-3">
-                    <p className="text-[10px] text-[#595959] mb-0.5">Remaining</p>
-                    <p className="text-xl font-bold leading-none text-[#595959]">{3000 - charCount}</p>
-                  </div>
-                </div>
-                <div className="h-1.5 rounded-full bg-[#e8eef5] overflow-hidden">
-                  <div
-                    className={cn('h-full rounded-full transition-all', charDanger ? 'bg-red-500' : charWarning ? 'bg-amber-500' : 'bg-green-500')}
-                    style={{ width: `${Math.min(100, (charCount / 3000) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Templates dialog */}
-      <Dialog open={templatesOpen} onOpenChange={setTemplatesOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold text-[#191919]">Saved Templates</DialogTitle>
-          </DialogHeader>
-          {templates.length === 0 ? (
-            <div className="py-8 text-center space-y-2">
-              <BookMarked className="h-8 w-8 text-[#595959] mx-auto opacity-30" />
-              <p className="text-sm text-[#595959]">No templates saved yet.</p>
-              <p className="text-xs text-[#a0a7af]">Save any post as a template from the Posts page.</p>
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-              {templates.map(tpl => (
-                <div key={tpl.id} className="rounded-xl border border-[#dce6f1] bg-[#f8fafc] p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs font-semibold text-[#191919] line-clamp-1">{tpl.name}</p>
-                    <button type="button" onClick={() => removeTemplate(tpl.id)}
-                      className="shrink-0 text-[#595959] hover:text-red-600 transition-colors" aria-label="Delete template">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-[#595959] line-clamp-3 leading-relaxed">{tpl.content}</p>
-                  <Button size="sm" variant="outline" className="w-full h-7 text-xs !border-[#dce6f1] hover:!bg-[#eef3f8]" onClick={() => applyTemplate(tpl)}>
-                    Use template
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <ImportModal
         open={importOpen}
