@@ -358,7 +358,7 @@ export function CreatePost() {
             onClick={() => setImportOpen(true)}
             className="h-8 flex items-center gap-1.5 rounded-lg border border-[#e8eaed] bg-white px-3 text-[12px] font-medium text-[#374151] hover:bg-[#f8f9fb] transition-colors"
           >
-            Import
+            Bulk Posting
           </button>
           {isLinkedInConnected ? (
             <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1 shrink-0">
