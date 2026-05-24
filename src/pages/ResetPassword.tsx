@@ -71,7 +71,7 @@ export default function ResetPassword() {
     <div className="h-screen overflow-hidden dashboard-shell flex items-center justify-center sm:p-6 md:p-8">
       <div className="w-full max-w-5xl h-full sm:h-auto bg-white sm:rounded-3xl border-0 sm:border border-[#e0dfdc] shadow-none sm:shadow-[0_4px_20px_rgba(0,0,0,0.06)] overflow-hidden flex flex-col md:flex-row">
 
-        <AuthLeftPanel tagline="Set a new password and get back in." />
+        <AuthLeftPanel />
 
         <div className="flex-1 min-h-0 md:w-[58%] flex flex-col px-6 py-4 sm:px-12 sm:py-12 bg-white overflow-hidden">
           <div className="flex-1 flex flex-col justify-center">

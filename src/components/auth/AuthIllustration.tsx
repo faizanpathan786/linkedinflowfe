@@ -88,11 +88,7 @@ export function BrandMark() {
 
 // ── Shared left panel ─────────────────────────────────────────────────────────
 
-interface AuthLeftPanelProps {
-  tagline?: string;
-}
-
-export function AuthLeftPanel({ tagline = 'Grow your professional presence — effortlessly.' }: AuthLeftPanelProps) {
+export function AuthLeftPanel() {
   return (
       <div className="relative hidden min-h-screen overflow-hidden border-r border-white/10 bg-[#071018] lg:flex lg:w-full">
       <ProductHeroVisual />

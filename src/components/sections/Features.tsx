@@ -28,8 +28,6 @@ const FEATURES = [
   },
 ];
 
-const ENTRY_X = [-90, 0, 90];
-const ENTRY_Y = [-20, -70, -20];
 
 interface CardProps {
   feature: (typeof FEATURES)[number];
@@ -51,9 +49,6 @@ function FeatureCard({ feature, index, isActive, onActivate, reduceMotion }: Car
   const [glow, setGlow] = useState({ x: 50, y: 50 });
   const [swept, setSwept] = useState(false);
 
-  const col = index % 3;
-  const _entryX = ENTRY_X[col];
-  const _entryY = ENTRY_Y[col];
   const delay = index * 0.11;
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {

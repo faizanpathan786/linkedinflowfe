@@ -29,7 +29,6 @@ export function LinkedInVault() {
     isExpired,
     vanityName,
     connectedAt,
-    daysUntilExpiry,
     connect,
     disconnect,
     testConnection,
@@ -53,15 +52,6 @@ export function LinkedInVault() {
   const displayName = profile?.firstName
     ? [profile.firstName, profile.lastName].filter(Boolean).join(' ')
     : rawHandle || 'LinkedIn User';
-
-  const expiresAt = linkedInStatus?.data?.expiresAt;
-  const _expDate = expiresAt ? new Date(expiresAt) : null;
-  const _isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
-  const _isExpiredNow = daysUntilExpiry !== null && daysUntilExpiry <= 0;
-
-  const _tokenPercent = daysUntilExpiry !== null
-    ? Math.max(0, Math.min(100, Math.round((daysUntilExpiry / 60) * 100)))
-    : 100;
 
   return (
     <div className="flex flex-col gap-4 animate-fade-in">

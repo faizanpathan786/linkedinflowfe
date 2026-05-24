@@ -42,7 +42,7 @@ const insightsNav = [
 ];
 
 
-export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: SidebarProps) {
+export function Sidebar({ isOpen, setIsOpen, isCollapsed }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, user }          = useAuthStore();

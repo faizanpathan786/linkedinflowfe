@@ -37,7 +37,7 @@ export default function ForgotPassword() {
 
   return (
     <div className="h-screen overflow-hidden bg-[#f4efe6] lg:grid lg:grid-cols-2">
-      <AuthLeftPanel tagline="Reset your password and get back to growing." />
+      <AuthLeftPanel />
 
       <div className="flex h-full items-center justify-center overflow-hidden bg-[#eef3f8] px-5 py-6 sm:px-10 lg:px-12">
         <div className="w-full max-w-[390px]">
