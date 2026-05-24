@@ -52,8 +52,8 @@ function FeatureCard({ feature, index, isActive, onActivate, reduceMotion }: Car
   const [swept, setSwept] = useState(false);
 
   const col = index % 3;
-  const entryX = ENTRY_X[col];
-  const entryY = ENTRY_Y[col];
+  const _entryX = ENTRY_X[col];
+  const _entryY = ENTRY_Y[col];
   const delay = index * 0.11;
 
   function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {

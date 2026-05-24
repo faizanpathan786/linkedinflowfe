@@ -39,7 +39,7 @@ const TONE_OPTIONS = [
   { value: 'storytelling',   label: 'Storytelling',      emoji: '📖' },
 ];
 
-const STYLE_OPTIONS: Array<{ value: StyleOption; label: string; description: string; emoji: string }> = [
+const _STYLE_OPTIONS: Array<{ value: StyleOption; label: string; description: string; emoji: string }> = [
   { value: 'story',   label: 'Story',   emoji: '📖', description: 'Narrative arc with a punchline' },
   { value: 'opinion', label: 'Opinion', emoji: '🎯', description: 'Bold take with a clear stance'  },
   { value: 'insight', label: 'Insight', emoji: '💡', description: 'Lesson distilled to action'     },
@@ -99,7 +99,7 @@ export function AIInterview() {
 
   const {
     aiAnswers: answers, aiStyle: style, aiVariations: variations,
-    setAIAnswers: setAnswers, setAIStyle: setStyle, setAIVariations: setVariations,
+    setAIAnswers: setAnswers, setAIStyle: _setStyle, setAIVariations: setVariations,
     brandVoice: storedBrandVoice, setBrandVoice: storeSetBrandVoice,
   } = useDataStore();
   const { ideas } = useLinkedInStore();
@@ -108,7 +108,7 @@ export function AIInterview() {
   const [generateError,  setGenerateError]  = useState<string | null>(null);
   const [fallbackPrompt, setFallbackPrompt] = useState<string | null>(null);
   const [voiceTone,  setVoiceTone]  = useState(storedBrandVoice?.tone  || 'professional');
-  const [voiceStyle, setVoiceStyle] = useState(storedBrandVoice?.style || '');
+  const [voiceStyle, _setVoiceStyle] = useState(storedBrandVoice?.style || '');
 
   // Pre-fill q1 from idea in store — instant, no API call
   useEffect(() => {

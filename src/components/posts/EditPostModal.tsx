@@ -155,7 +155,7 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
   const content = watch('content') ?? '';
   const linkUrl = watch('link_url') ?? '';
 
-  const { getRootProps: getVideoRootProps, getInputProps: getVideoDropInputProps, isDragActive: isVideoDragActive } = useDropzone({
+  const { getRootProps: getVideoRootProps, getInputProps: _getVideoDropInputProps, isDragActive: isVideoDragActive } = useDropzone({
     accept: { 'video/*': ['.mp4', '.mov', '.avi', '.webm', '.mkv'] },
     maxFiles: 1,
     maxSize: 200 * 1024 * 1024,

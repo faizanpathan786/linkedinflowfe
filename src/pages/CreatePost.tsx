@@ -79,7 +79,7 @@ export function CreatePost() {
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
   const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
-  const { addPost, linkedInStatus, posts } = useLinkedInStore();
+  const { addPost, linkedInStatus } = useLinkedInStore();
   const { user } = useAuthStore();
   const { brandVoice } = useDataStore();
 

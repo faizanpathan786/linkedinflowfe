@@ -6,11 +6,9 @@ import {
   Lock,
   Linkedin,
   RefreshCw,
-  AlertTriangle,
   Clock,
   Zap,
   ExternalLink,
-  Key,
   Info,
 } from 'lucide-react';
 import { useLinkedInOAuth } from '../hooks/useLinkedInOAuth';
@@ -18,14 +16,6 @@ import { useDataStore } from '@/store/useDataStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-interface LinkedInProfile {
-  firstName?: string;
-  lastName?: string;
-  headline?: string;
-  pictureUrl?: string;
-  vanityName?: string;
-  personUrn?: string;
-}
 
 export function LinkedInVault() {
   const [isTesting, setIsTesting] = useState(false);
@@ -65,11 +55,11 @@ export function LinkedInVault() {
     : rawHandle || 'LinkedIn User';
 
   const expiresAt = linkedInStatus?.data?.expiresAt;
-  const expDate = expiresAt ? new Date(expiresAt) : null;
-  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
-  const isExpiredNow = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+  const _expDate = expiresAt ? new Date(expiresAt) : null;
+  const _isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
+  const _isExpiredNow = daysUntilExpiry !== null && daysUntilExpiry <= 0;
 
-  const tokenPercent = daysUntilExpiry !== null
+  const _tokenPercent = daysUntilExpiry !== null
     ? Math.max(0, Math.min(100, Math.round((daysUntilExpiry / 60) * 100)))
     : 100;
 

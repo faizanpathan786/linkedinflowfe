@@ -123,6 +123,16 @@ export const authAPI = {
     const response = await api.patch('/api/me', data);
     return response.data as { success: boolean; user: { id: string; email: string; name: string; timezone?: string } };
   },
+
+  forgotPassword: async (email: string) => {
+    const response = await api.post('/api/forgot-password', { email });
+    return response.data;
+  },
+
+  resetPassword: async (token: string, password: string) => {
+    const response = await api.post('/api/reset-password', { token, password });
+    return response.data;
+  },
 };
 
 // ── LinkedIn OAuth ────────────────────────────────────────────────────────────
