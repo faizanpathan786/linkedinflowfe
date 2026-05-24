@@ -26,8 +26,6 @@ import {
   Pencil,
   Search,
   X,
-  Copy,
-  BookmarkPlus,
   ExternalLink,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
@@ -38,7 +36,6 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ImportModal } from '@/components/posts/ImportModal';
 import { EditPostModal } from '@/components/posts/EditPostModal';
-import { saveTemplate } from '@/lib/templates';
 
 type StatusFilter = 'all' | 'draft' | 'scheduled' | 'published' | 'failed';
 type ExtPost = Omit<Post, 'status'> & { status: Post['status'] | 'publishing' };
@@ -99,7 +96,6 @@ function PostCard({
   onEdit,
   onViewLog,
   onRetry,
-  onDuplicate,
   isSelected,
   onToggleSelect,
 }: {
@@ -109,14 +105,12 @@ function PostCard({
   onEdit: (post: ExtPost) => void;
   onViewLog: (id: string) => void;
   onRetry: (id: string) => void;
-  onDuplicate: (id: string) => void;
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
 }) {
   const [deleting,    setDeleting]    = useState(false);
   const [publishing,  setPublishing]  = useState(false);
   const [retrying,    setRetrying]    = useState(false);
-  const [duplicating, setDuplicating] = useState(false);
   const [logReason,   setLogReason]   = useState<string | null>(null);
 
   const meta        = statusMeta[post.status] ?? statusMeta['draft'];
@@ -178,18 +172,6 @@ function PostCard({
     }
   };
 
-  const handleDuplicate = async () => {
-    setDuplicating(true);
-    try {
-      const result = await postsAPI.duplicatePost(post.id);
-      onDuplicate(result.post.id);
-      toast.success('Post duplicated as draft.');
-    } catch {
-      toast.error('Failed to duplicate post.');
-    } finally {
-      setDuplicating(false);
-    }
-  };
 
   return (
     <div
@@ -312,15 +294,6 @@ function PostCard({
               <Pencil className="h-3 w-3" />
             </button>
           )}
-          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={() => { navigator.clipboard.writeText(post.content); toast.success('Copied.'); }} title="Copy">
-            <Copy className="h-3 w-3" />
-          </button>
-          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={() => { saveTemplate({ content: post.content, post_type: post.post_type }); toast.success('Saved as template.'); }} title="Save as template">
-            <BookmarkPlus className="h-3 w-3" />
-          </button>
-          <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-[#111827] hover:bg-[#f3f4f6] transition-colors" onClick={handleDuplicate} disabled={duplicating || deleting} title="Duplicate">
-            {duplicating ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3" />}
-          </button>
           <button className="h-6 w-6 flex items-center justify-center rounded-md text-[#6b7280] hover:text-rose-600 hover:bg-rose-50 transition-colors" onClick={handleDelete} disabled={deleting || publishing} title="Delete">
             {deleting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
           </button>
@@ -408,11 +381,6 @@ export function Posts() {
   const handleRetry       = (id: string) => setPosts(posts.map(p =>
     p.id === id ? { ...p, status: 'publishing' as unknown as Post['status'] } : p
   ));
-  const handleDuplicate   = (newPostId: string) => {
-    postsAPI.getPost(newPostId)
-      .then(data => setPosts([data.post, ...posts]))
-      .catch(() => postsAPI.getPosts().then(d => setPosts(d.posts ?? [])).catch(() => {}));
-  };
 
   const toggleSelect   = (id: string) => setSelectedIds(prev => {
     const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s;
@@ -456,6 +424,7 @@ export function Posts() {
       ? toast.success(`Published ${succeeded.length} post${succeeded.length > 1 ? 's' : ''}.`)
       : toast.warning(`Published ${succeeded.length} of ${ids.length} posts.`);
   };
+
 
   const handlePauseAll = async () => {
     const scheduledIds = posts.filter(p => p.status === 'scheduled').map(p => p.id);
@@ -512,6 +481,7 @@ export function Posts() {
           >
             <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} />
           </button>
+
           {scheduledCount > 0 && (
             <Button variant="outline" size="sm" onClick={handlePauseAll} disabled={isPausingAll}
               className="h-8 text-[13px] rounded-lg border-[#e8eaed] text-[#374151] hover:bg-[#f8f9fb] gap-1.5">
@@ -612,7 +582,7 @@ export function Posts() {
                   ) : activeTab === 'draft' ? (
                     <EmptyState icon={FileText} title="No drafts" description="Write a post and save it as a draft — it will appear here until you publish it." action={{ label: 'Write a draft', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
                   ) : activeTab === 'scheduled' ? (
-                    <EmptyState icon={Calendar} title="Queue is empty" description="Schedule a post to go live at the best time. Pick a future date and time when creating a post." action={{ label: 'Schedule a post', onClick: () => navigate('/dashboard/create-post'), icon: Clock }} />
+                    <EmptyState icon={Calendar} title="No scheduled posts" description="Pick a future date and time when creating a post to schedule it." action={{ label: 'Schedule a post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
                   ) : activeTab === 'published' ? (
                     <EmptyState icon={CheckCircle} title="Nothing published yet" description="Once a post is published to LinkedIn it appears here. Publish a draft or create a new post." action={{ label: 'Create post', onClick: () => navigate('/dashboard/create-post'), icon: Plus }} />
                   ) : activeTab === 'failed' ? (
@@ -666,7 +636,6 @@ export function Posts() {
                           onEdit={p => setEditingPost(p as Post)}
                           onViewLog={setLogPostId}
                           onRetry={handleRetry}
-                          onDuplicate={handleDuplicate}
                           isSelected={selectedIds.has(post.id)}
                           onToggleSelect={toggleSelect}
                         />

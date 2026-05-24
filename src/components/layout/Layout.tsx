@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -6,6 +6,9 @@ import { CreatePostModal } from '@/components/posts/CreatePostModal';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { Lightbulb } from 'lucide-react';
 import { QuickCaptureModal } from '@/components/posts/QuickCaptureModal';
+import { ConnectLinkedInOnboardModal, shouldShowOnboard } from '@/components/posts/ConnectLinkedInOnboardModal';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useLinkedInOAuth } from '@/hooks/useLinkedInOAuth';
 
 function QuickCaptureButton({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   return (
@@ -27,7 +30,20 @@ export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [onboardOpen, setOnboardOpen] = useState(false);
   const { isCreatePostOpen, closeCreatePost } = useLinkedInStore();
+  const { user } = useAuthStore();
+  const { isConnected, linkedInStatus } = useLinkedInOAuth();
+
+  // Show connect modal once per user if LinkedIn is not connected
+  useEffect(() => {
+    if (!user?.id) return;
+    // Wait until status has been fetched (not null) before deciding
+    if (linkedInStatus === null) return;
+    if (!isConnected && shouldShowOnboard(user.id)) {
+      setOnboardOpen(true);
+    }
+  }, [user?.id, linkedInStatus, isConnected]);
 
   return (
     <div className="h-screen overflow-hidden dashboard-shell">
@@ -49,6 +65,12 @@ export function Layout() {
       </div>
 
       <CreatePostModal open={isCreatePostOpen} onOpenChange={(o) => { if (!o) closeCreatePost(); }} />
+
+      <ConnectLinkedInOnboardModal
+        open={onboardOpen}
+        onDismiss={() => setOnboardOpen(false)}
+        persistDismiss
+      />
 
       {/* Floating quick-capture button */}
       <QuickCaptureButton open={captureOpen} onOpenChange={setCaptureOpen} />

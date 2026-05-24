@@ -46,6 +46,7 @@ import {
   ChevronDown,
   Send,
   GripVertical,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -164,7 +165,14 @@ const dragActivated = { current: false };
 // Disables all dragging while the post preview modal is open.
 const DragDisabledCtx = createContext(false);
 
-// ── Draggable post chip (Month view) ─────────────────────────────────────────
+// ── Draggable event bar (Month view) ─────────────────────────────────────────
+
+const eventBarStyle: Record<Post['status'], string> = {
+  draft:     'bg-amber-100 border-l-[3px] border-amber-400 text-amber-900 hover:bg-amber-200',
+  scheduled: 'bg-blue-100 border-l-[3px] border-blue-500 text-blue-900 hover:bg-blue-200',
+  published: 'bg-emerald-100 border-l-[3px] border-emerald-500 text-emerald-900 hover:bg-emerald-200',
+  failed:    'bg-red-100 border-l-[3px] border-red-400 text-red-900 hover:bg-red-200',
+};
 
 function PostChip({
   post,
@@ -195,16 +203,63 @@ function PostChip({
       onClick={(e) => e.stopPropagation()}
       title={post.content}
       className={cn(
-        'flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium leading-tight cursor-pointer select-none',
-        'transition-all duration-150',
-        chipStyle[post.status],
+        'w-full truncate rounded-sm px-1.5 py-[2px] text-[11px] font-medium leading-tight cursor-pointer select-none transition-colors duration-100',
+        eventBarStyle[post.status],
         isDragging && !overlay && 'opacity-30',
-        overlay && 'shadow-xl scale-105 rotate-1',
-        isDraggable && 'hover:shadow-sm active:scale-[0.97]',
+        overlay && 'shadow-lg scale-105',
       )}
     >
-      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', dotStyle[post.status])} />
-      <span className="truncate max-w-[100px]">{post.content}</span>
+      {post.content}
+    </div>
+  );
+}
+
+// ── Day overflow popup ────────────────────────────────────────────────────────
+
+function DayPostsPopup({
+  date,
+  posts,
+  onPostClick,
+  onClose,
+}: {
+  date: string;
+  posts: Post[];
+  onPostClick: (post: Post) => void;
+  onClose: () => void;
+}) {
+  const d = parseISO(date);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
+      <div
+        className="w-72 rounded-xl border border-gray-200 bg-white shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{format(d, 'EEEE')}</p>
+            <p className="text-[15px] font-bold text-gray-800 leading-tight">{format(d, 'MMMM d, yyyy')}</p>
+          </div>
+          <button onClick={onClose} className="h-6 w-6 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        {/* Post list */}
+        <div className="p-2 space-y-1 max-h-72 overflow-y-auto">
+          {posts.map(post => (
+            <button
+              key={post.id}
+              onClick={() => { onClose(); onPostClick(post); }}
+              className={cn(
+                'w-full text-left rounded-md px-2 py-1.5 text-[12px] font-medium truncate transition-colors',
+                eventBarStyle[post.status],
+              )}
+            >
+              {post.content}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -220,12 +275,14 @@ function CalendarCell({
   currentMonth,
   onPostClick,
   onDayClick,
+  onMoreClick,
 }: {
   date: Date;
   posts: Post[];
   currentMonth: Date;
   onPostClick: (post: Post) => void;
   onDayClick?: (dateStr: string) => void;
+  onMoreClick?: (dateStr: string, posts: Post[]) => void;
 }) {
   const dateStr = format(date, 'yyyy-MM-dd');
   const { setNodeRef, isOver } = useDroppable({ id: dateStr });
@@ -241,55 +298,45 @@ function CalendarCell({
       ref={setNodeRef}
       onClick={() => { if (!past && inMonth && onDayClick) onDayClick(dateStr); }}
       className={cn(
-        'group relative min-h-[130px] rounded-xl border p-2.5 transition-all duration-150 flex flex-col',
-        inMonth
-          ? isWeekend ? 'bg-gray-50/70 border-gray-200' : 'bg-white border-gray-200'
-          : 'bg-gray-50/30 border-gray-100',
-        past && inMonth && 'opacity-75',
-        past && 'cursor-default',
-        !past && inMonth && 'hover:border-[#0a66c2]/50 hover:shadow-md cursor-pointer',
-        today && 'border-[#0a66c2] bg-[#f0f6ff] shadow-[0_0_0_2px_rgba(10,102,194,0.12)]',
-        !past && isOver && 'border-[#0a66c2] bg-blue-50/60 scale-[1.01] shadow-md',
+        'group relative h-[115px] border-b border-r border-gray-100 p-1.5 flex flex-col transition-colors duration-100',
+        inMonth ? (isWeekend ? 'bg-gray-50/50' : 'bg-white') : 'bg-gray-50/70',
+        !past && inMonth && 'hover:bg-blue-50/30 cursor-pointer',
+        past && inMonth && 'opacity-60 cursor-default',
+        !inMonth && 'cursor-default',
+        isOver && '!bg-blue-50',
       )}
     >
-      {/* Day number */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Date number row */}
+      <div className="flex items-center justify-between mb-1">
         <span className={cn(
-          'flex h-6 w-6 items-center justify-center rounded-full text-[12px] font-bold',
+          'flex h-[22px] w-[22px] items-center justify-center rounded-full text-[12px] font-semibold',
           today ? 'bg-[#0a66c2] text-white' : inMonth ? 'text-gray-700' : 'text-gray-300',
         )}>
           {format(date, 'd')}
         </span>
-        {/* "+" icon on hover for future days */}
-        {!past && inMonth && !today && (
-          <span className="opacity-0 group-hover:opacity-100 transition-opacity">
-            <Plus className="h-3 w-3 text-[#0a66c2]" />
-          </span>
+        {!past && inMonth && (
+          <Plus className="h-3 w-3 text-[#0a66c2] opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
         )}
       </div>
 
-      {/* Post chips */}
-      <div className="flex flex-col gap-1 flex-1">
+      {/* Events */}
+      <div className="flex flex-col gap-[3px] flex-1 overflow-hidden">
         {visible.map(post => (
           <PostChip key={post.id} post={post} onClick={() => onPostClick(post)} />
         ))}
         {overflow > 0 && (
           <button
-            onClick={(e) => { e.stopPropagation(); onPostClick(posts[MAX_VISIBLE_CHIPS]); }}
-            className="text-left text-[10px] font-semibold text-[#0a66c2] hover:underline pl-0.5"
+            onClick={(e) => { e.stopPropagation(); onMoreClick?.(dateStr, posts); }}
+            className="text-left text-[10px] font-medium text-[#0a66c2] hover:underline px-1"
           >
             +{overflow} more
           </button>
         )}
       </div>
 
-      {/* Drop indicator */}
-      {!past && isOver && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl">
-          <div className="rounded-full bg-[#0a66c2]/10 px-3 py-1 text-[11px] font-semibold text-[#0a66c2] border border-[#0a66c2]/30 backdrop-blur-sm">
-            Drop here
-          </div>
-        </div>
+      {/* Drop highlight ring */}
+      {isOver && (
+        <div className="pointer-events-none absolute inset-0 ring-2 ring-inset ring-[#0a66c2]/50" />
       )}
     </div>
   );
@@ -705,15 +752,15 @@ function DraftQueue({
 
 // ── Week view ─────────────────────────────────────────────────────────────────
 
-const WEEK_START_H = 6;   // 6 AM
-const WEEK_END_H   = 22;  // 10 PM
-const HOUR_PX      = 64;  // px per hour row
+const WEEK_START_H = 7;
+const WEEK_END_H   = 22;
+const HOUR_PX      = 72;
 
-const WEEK_COLORS: Record<Post['status'], { bg: string; border: string; text: string }> = {
-  scheduled: { bg: '#eff6ff', border: '#0a66c2', text: '#0a66c2'  },
-  published: { bg: '#f0fdf4', border: '#22c55e', text: '#15803d'  },
-  draft:     { bg: '#fffbeb', border: '#f59e0b', text: '#92400e'  },
-  failed:    { bg: '#fef2f2', border: '#ef4444', text: '#991b1b'  },
+const WEEK_COLORS: Record<Post['status'], { bg: string; border: string; text: string; badge: string }> = {
+  scheduled: { bg: '#eff6ff', border: '#0a66c2', text: '#1e40af', badge: '#dbeafe' },
+  published: { bg: '#f0fdf4', border: '#16a34a', text: '#15803d', badge: '#dcfce7' },
+  draft:     { bg: '#fffbeb', border: '#d97706', text: '#92400e', badge: '#fef3c7' },
+  failed:    { bg: '#fef2f2', border: '#dc2626', text: '#991b1b', badge: '#fee2e2' },
 };
 
 function WeekView({
@@ -725,6 +772,7 @@ function WeekView({
   postsByDate: Map<string, Post[]>;
   onPostClick: (post: Post) => void;
 }) {
+  const navigate = useNavigate();
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
@@ -735,77 +783,92 @@ function WeekView({
   );
   const totalH = (WEEK_END_H - WEEK_START_H) * HOUR_PX;
 
-  const now        = new Date();
-  const currentH   = now.getHours() + now.getMinutes() / 60;
-  const todayStr   = format(now, 'yyyy-MM-dd');
-  const nowTop     = (currentH - WEEK_START_H) * HOUR_PX;
+  const now         = new Date();
+  const currentH    = now.getHours() + now.getMinutes() / 60;
+  const todayStr    = format(now, 'yyyy-MM-dd');
+  const nowTop      = (currentH - WEEK_START_H) * HOUR_PX;
   const showNowLine = currentH >= WEEK_START_H && currentH < WEEK_END_H;
 
   const scrollRef = React.useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (scrollRef.current) {
-      const offset = Math.max(0, nowTop - 120);
-      scrollRef.current.scrollTop = offset;
+      scrollRef.current.scrollTop = Math.max(0, nowTop - 160);
     }
-  }, [nowTop]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const formatHour = (h: number) =>
+    h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
 
   return (
     <div className="flex flex-col overflow-hidden">
-      {/* Day-of-week header row */}
-      <div className="grid border-b border-gray-100 bg-white sticky top-0 z-10" style={{ gridTemplateColumns: '56px repeat(7, 1fr)' }}>
-        <div className="border-r border-gray-100" />
+
+      {/* ── Day header ── */}
+      <div className="grid border-b border-[#e8eaed] bg-white shrink-0" style={{ gridTemplateColumns: '52px repeat(7, 1fr)' }}>
+        <div className="border-r border-[#e8eaed]" />
         {weekDays.map(day => {
-          const isT   = isToday(day);
+          const isT    = isToday(day);
           const dayStr = format(day, 'yyyy-MM-dd');
           const count  = (postsByDate.get(dayStr) ?? []).length;
+          const isWknd = day.getDay() === 0 || day.getDay() === 6;
           return (
             <div
               key={dayStr}
               className={cn(
-                'py-3 text-center border-l border-gray-100 select-none',
-                isT && 'bg-[#eff6ff]',
+                'py-3 px-1 text-center border-l border-[#e8eaed] select-none',
+                isT ? 'bg-[#eef3f8]' : isWknd ? 'bg-[#fafafa]' : 'bg-white',
               )}
             >
-              <p className={cn('text-[10px] font-semibold uppercase tracking-widest', isT ? 'text-[#0a66c2]' : 'text-gray-400')}>
+              <p className={cn(
+                'text-[10px] font-bold uppercase tracking-widest',
+                isT ? 'text-[#0a66c2]' : isWknd ? 'text-[#9ca3af]' : 'text-[#6b7280]',
+              )}>
                 {format(day, 'EEE')}
               </p>
               <div className={cn(
-                'mx-auto mt-1 h-8 w-8 flex items-center justify-center rounded-full text-[14px] font-bold',
-                isT ? 'bg-[#0a66c2] text-white' : 'text-gray-800',
+                'mx-auto mt-1.5 h-8 w-8 flex items-center justify-center rounded-full text-[15px] font-bold transition-colors',
+                isT ? 'bg-[#0a66c2] text-white shadow-[0_2px_8px_rgba(10,102,194,0.35)]' : 'text-[#111827]',
               )}>
                 {format(day, 'd')}
               </div>
-              {count > 0 && (
-                <div className="mt-1 flex justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#0a66c2]/40" />
+              {count > 0 ? (
+                <div className="mt-1.5 flex items-center justify-center gap-0.5">
+                  {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+                    <span key={i} className={cn('h-1 w-1 rounded-full', isT ? 'bg-[#0a66c2]' : 'bg-[#9ca3af]')} />
+                  ))}
+                  {count > 3 && <span className="text-[9px] text-[#9ca3af] font-semibold ml-0.5">+{count - 3}</span>}
                 </div>
+              ) : (
+                <div className="mt-1.5 h-3" />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Scrollable time grid */}
-      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '580px' }}>
-        <div className="relative grid" style={{ gridTemplateColumns: '56px repeat(7, 1fr)', height: totalH }}>
+      {/* ── Scrollable time grid ── */}
+      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: '560px' }}>
+        <div className="relative grid" style={{ gridTemplateColumns: '52px repeat(7, 1fr)', height: totalH }}>
 
-          {/* Hour labels + horizontal grid lines */}
+          {/* Hour labels + grid lines */}
           {hours.map(h => {
             const top = (h - WEEK_START_H) * HOUR_PX;
-            const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
             return (
               <React.Fragment key={h}>
-                {/* Time label */}
                 <div
-                  className="absolute left-0 w-14 flex items-start justify-end pr-2 pt-0.5 select-none pointer-events-none"
+                  className="absolute left-0 w-[52px] flex items-start justify-end pr-2 pt-[3px] select-none pointer-events-none z-10"
                   style={{ top }}
                 >
-                  <span className="text-[10px] text-gray-400 font-medium leading-none">{label}</span>
+                  <span className="text-[10px] text-[#9ca3af] font-medium leading-none whitespace-nowrap">
+                    {formatHour(h)}
+                  </span>
                 </div>
-                {/* Horizontal rule across all columns */}
+                {/* Solid hour line */}
+                <div className="absolute pointer-events-none border-t border-[#f0f0f0]" style={{ top, left: 52, right: 0 }} />
+                {/* Dashed half-hour line */}
                 <div
-                  className="absolute pointer-events-none border-t border-gray-100"
-                  style={{ top, left: 56, right: 0 }}
+                  className="absolute pointer-events-none"
+                  style={{ top: top + HOUR_PX / 2, left: 52, right: 0, borderTop: '1px dashed #f5f5f5' }}
                 />
               </React.Fragment>
             );
@@ -813,67 +876,108 @@ function WeekView({
 
           {/* Day columns */}
           {weekDays.map((day, colIdx) => {
-            const dayStr  = format(day, 'yyyy-MM-dd');
-            const isT     = dayStr === todayStr;
-            const dayPosts = (postsByDate.get(dayStr) ?? []).filter(p =>
-              p.scheduled_at || p.published_at
-            );
+            const dayStr   = format(day, 'yyyy-MM-dd');
+            const isT      = dayStr === todayStr;
+            const isWknd   = day.getDay() === 0 || day.getDay() === 6;
+            const dayPosts = (postsByDate.get(dayStr) ?? []).filter(p => p.scheduled_at || p.published_at);
+            const colW     = `calc((100% - 52px) / 7)`;
+            const colLeft  = `calc(52px + ${colIdx} * ${colW})`;
 
             return (
               <div
                 key={dayStr}
                 className={cn(
-                  'absolute top-0 bottom-0 border-l border-gray-100',
-                  isT && 'bg-[#eff6ff]/30',
+                  'absolute top-0 bottom-0 border-l border-[#f0f0f0] group/col',
+                  isT    && 'bg-[#f8fbff]',
+                  isWknd && !isT && 'bg-[#fafafa]',
                 )}
-                style={{ left: `calc(56px + ${colIdx} * ((100% - 56px) / 7))`, width: 'calc((100% - 56px) / 7)' }}
+                style={{ left: colLeft, width: colW }}
               >
-                {/* Current time line */}
+                {/* Current time indicator */}
                 {isT && showNowLine && (
-                  <div className="absolute left-0 right-0 z-20 flex items-center pointer-events-none" style={{ top: nowTop }}>
-                    <div className="h-2.5 w-2.5 rounded-full bg-[#0a66c2] shrink-0 -ml-1.5 shadow-sm" />
+                  <div
+                    className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                    style={{ top: nowTop }}
+                  >
+                    <div className="h-3 w-3 rounded-full bg-[#0a66c2] shrink-0 -ml-1.5 shadow-md ring-2 ring-white" />
                     <div className="flex-1 h-[2px] bg-[#0a66c2]" />
                   </div>
                 )}
 
-                {/* Post event blocks */}
+                {/* Click-to-create overlay (visible on hover on future/today slots) */}
+                {(isT || !isPast(startOfDay(day))) && (
+                  <div
+                    className="absolute inset-0 cursor-pointer opacity-0 group-hover/col:opacity-100 transition-opacity flex items-center justify-center z-[5] pointer-events-none"
+                  >
+                    <div className="h-6 w-6 rounded-full bg-[#0a66c2]/10 flex items-center justify-center">
+                      <Plus className="h-3.5 w-3.5 text-[#0a66c2]/50" />
+                    </div>
+                  </div>
+                )}
+                <div
+                  className="absolute inset-0 cursor-pointer z-[4]"
+                  onClick={() => navigate(`/dashboard/create-post?scheduled_date=${dayStr}`)}
+                />
+
+                {/* Post blocks */}
                 {dayPosts.map(post => {
                   const t      = new Date(post.scheduled_at ?? post.published_at!);
                   const postH  = t.getHours() + t.getMinutes() / 60;
                   if (postH < WEEK_START_H || postH >= WEEK_END_H) return null;
-                  const top    = (postH - WEEK_START_H) * HOUR_PX + 2;
-                  const height = HOUR_PX - 6;
+
+                  const topPx  = (postH - WEEK_START_H) * HOUR_PX + 2;
+                  const height = Math.max(HOUR_PX - 8, 40);
                   const color  = WEEK_COLORS[post.status];
                   const preview = post.content.replace(/\n+/g, ' ').trim();
 
                   return (
                     <div
                       key={post.id}
-                      className="absolute left-1 right-1 rounded-lg px-2 py-1.5 cursor-pointer hover:brightness-95 transition-all z-10 overflow-hidden"
+                      className="absolute left-1 right-1 rounded-lg overflow-hidden cursor-pointer z-10 transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.15)] hover:-translate-y-px group/card"
                       style={{
-                        top,
+                        top: topPx,
                         height,
                         backgroundColor: color.bg,
                         borderLeft: `3px solid ${color.border}`,
                       }}
-                      onClick={() => onPostClick(post)}
+                      onClick={(e) => { e.stopPropagation(); onPostClick(post); }}
                       title={post.content}
                     >
-                      <p className="text-[10px] font-bold leading-none mb-0.5" style={{ color: color.border }}>
-                        {format(t, 'h:mm a')}
-                      </p>
-                      <p
-                        className="text-[11px] font-medium leading-snug"
-                        style={{
-                          color: color.text,
-                          overflow: 'hidden',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                        } as React.CSSProperties}
-                      >
-                        {preview}
-                      </p>
+                      <div className="px-2 py-1.5 h-full flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <span
+                              className="text-[9px] font-bold leading-none uppercase tracking-wide"
+                              style={{ color: color.border }}
+                            >
+                              {format(t, 'h:mm a')}
+                            </span>
+                            <span
+                              className="text-[8px] font-semibold px-1 py-0.5 rounded-full leading-none"
+                              style={{ backgroundColor: color.badge, color: color.text }}
+                            >
+                              {post.status}
+                            </span>
+                          </div>
+                          <p
+                            className="text-[11px] font-medium leading-snug"
+                            style={{
+                              color: color.text,
+                              overflow: 'hidden',
+                              display: '-webkit-box',
+                              WebkitLineClamp: height > 56 ? 2 : 1,
+                              WebkitBoxOrient: 'vertical',
+                            } as React.CSSProperties}
+                          >
+                            {preview}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                          <span className="text-[9px] font-medium" style={{ color: color.border }}>
+                            {post.post_type}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   );
                 })}
@@ -916,26 +1020,42 @@ export function ContentCalendar() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [dayPopup, setDayPopup] = useState<{ date: string; posts: Post[] } | null>(null);
 
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [isFetchingImage, setIsFetchingImage] = useState(false);
 
   // Blob URL cache — keyed by post ID. Pre-fetched in the background so clicks are instant.
   const imageBlobCache = useRef<Map<string, string>>(new Map());
+  const videoBlobCache = useRef<Map<string, string>>(new Map());
 
   // Revoke all cached blobs when the component unmounts.
   useEffect(() => {
-    const cache = imageBlobCache.current;
-    return () => { cache.forEach(url => URL.revokeObjectURL(url)); cache.clear(); };
+    const imgCache = imageBlobCache.current;
+    const vidCache = videoBlobCache.current;
+    return () => {
+      imgCache.forEach(url => URL.revokeObjectURL(url)); imgCache.clear();
+      vidCache.forEach(url => URL.revokeObjectURL(url)); vidCache.clear();
+    };
   }, []);
+
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+
+  // Returns true for any URL that must be fetched with auth headers
+  const needsAuth = (url: string) =>
+    url.startsWith('/') || url.startsWith(API_BASE + '/');
+
+  // Normalise to a fetchable absolute URL
+  const toFetchUrl = (url: string) =>
+    url.startsWith('/') ? `${API_BASE}${url}` : url;
 
   // Eagerly fetch images for all posts that have one, using limited concurrency.
   useEffect(() => {
-    const postsWithImages = posts.filter(p => p.has_image && p.image_url?.startsWith('/'));
+    const postsWithImages = posts.filter(p => p.has_image && p.image_url && needsAuth(p.image_url));
     if (postsWithImages.length === 0) return;
 
     const token = localStorage.getItem('auth_token') || localStorage.getItem('authToken');
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
     let idx = 0;
     let cancelled = false;
 
@@ -944,7 +1064,7 @@ export function ContentCalendar() {
         const post = postsWithImages[idx++];
         if (imageBlobCache.current.has(post.id)) continue;
         try {
-          const res = await fetch(`${apiBase}${post.image_url}`, {
+          const res = await fetch(toFetchUrl(post.image_url!), {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
             credentials: 'include',
           });
@@ -958,47 +1078,51 @@ export function ContentCalendar() {
       }
     };
 
-    // 3 parallel workers
     fetchNext(); fetchNext(); fetchNext();
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posts]);
 
-  const openPostPreview = async (post: Post) => {
-    setSelectedPost(post);
-    setPreviewImageUrl(null);
-    setIsFetchingImage(false);
-
-    if (!post.has_image && !post.image_url) return;
-
+  const openPostPreview = (post: Post) => {
     const raw = post.image_url ?? '';
 
-    if (raw.startsWith('data:') || /^https?:\/\//i.test(raw)) {
-      setPreviewImageUrl(raw);
-      return;
-    }
+    // Cache is always checked by post ID first — this covers freshly-replaced images
+    // where the server may return null/same image_url but we already have the new blob.
+    const cached        = imageBlobCache.current.get(post.id) ?? null;
+    const isDataUrl     = raw.startsWith('data:');
+    const isExternalUrl = /^https?:\/\//i.test(raw) && !needsAuth(raw);
 
-    if (raw.startsWith('/')) {
-      // Serve from cache if already pre-fetched — instant
-      const cached = imageBlobCache.current.get(post.id);
-      if (cached) { setPreviewImageUrl(cached); return; }
+    let syncUrl: string | null =
+      cached                        ? cached :
+      isDataUrl || isExternalUrl    ? raw    :
+      null;
 
-      // Not cached yet (e.g. prefetch still in flight) — fetch on demand
+    // Resolve video blob if available
+    const cachedVideo = videoBlobCache.current.get(post.id) ?? null;
+    setPreviewVideoUrl(cachedVideo);
+
+    setSelectedPost(post);
+    setPreviewImageUrl(syncUrl);
+    setIsFetchingImage(false);
+
+    // Nothing in cache and it's a backend URL — fetch with auth
+    if (!syncUrl && needsAuth(raw)) {
       setIsFetchingImage(true);
       const token = localStorage.getItem('auth_token') || localStorage.getItem('authToken');
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-      try {
-        const res = await fetch(`${apiBase}${raw}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const blob = await res.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          imageBlobCache.current.set(post.id, blobUrl);
-          setPreviewImageUrl(blobUrl);
-        }
-      } catch { /* silent */ }
-      finally { setIsFetchingImage(false); }
+      fetch(toFetchUrl(raw), {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      })
+        .then(res => res.ok ? res.blob() : null)
+        .then(blob => {
+          if (blob && blob.size > 0) {
+            const blobUrl = URL.createObjectURL(blob);
+            imageBlobCache.current.set(post.id, blobUrl);
+            setPreviewImageUrl(blobUrl);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setIsFetchingImage(false));
     }
   };
 
@@ -1080,8 +1204,9 @@ export function ContentCalendar() {
         targetStatus === 'draft'
           ? null
           : (post.scheduled_at ?? (() => {
+              // Use next hour from now to ensure the time is always in the future.
               const d = new Date();
-              d.setHours(12, 0, 0, 0);
+              d.setHours(d.getHours() + 1, 0, 0, 0);
               return d.toISOString();
             })());
 
@@ -1093,7 +1218,10 @@ export function ContentCalendar() {
       ));
 
       try {
-        const result = await postsAPI.updatePost(post.id, { scheduled_at: nextScheduledAt });
+        const result = await postsAPI.updatePost(post.id, {
+          status: targetStatus,
+          scheduled_at: nextScheduledAt,
+        });
         setPosts(posts.map(p => p.id === result.post.id ? result.post : p));
         toast.success(targetStatus === 'draft' ? 'Moved to draft.' : 'Moved to scheduled.');
       } catch {
@@ -1151,9 +1279,19 @@ export function ContentCalendar() {
     }
   };
 
-  const handlePostUpdated = (updated: Post) => {
+  const handlePostUpdated = (updated: Post, newImageUrl?: string, newVideoUrl?: string) => {
+    // Replace stale image blob
+    const oldImg = imageBlobCache.current.get(updated.id);
+    if (oldImg) { URL.revokeObjectURL(oldImg); imageBlobCache.current.delete(updated.id); }
+    if (newImageUrl) imageBlobCache.current.set(updated.id, newImageUrl);
+
+    // Replace stale video blob
+    const oldVid = videoBlobCache.current.get(updated.id);
+    if (oldVid) { URL.revokeObjectURL(oldVid); videoBlobCache.current.delete(updated.id); }
+    if (newVideoUrl) videoBlobCache.current.set(updated.id, newVideoUrl);
+
     setPosts(posts.map(p => p.id === updated.id ? updated : p));
-    setSelectedPost(updated);
+    openPostPreview(updated);
   };
 
   const handlePrev = () => {
@@ -1262,22 +1400,23 @@ export function ContentCalendar() {
             {/* Month view */}
             {viewMode === 'month' && (
               <div className="flex flex-col flex-1 min-h-0 overflow-auto">
-                <div className="grid grid-cols-7 border-b border-[#f3f4f6] shrink-0">
+                {/* Day-of-week header */}
+                <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50/60 shrink-0 min-w-[560px]">
                   {DAYS_OF_WEEK.map((d, i) => (
                     <div
                       key={d}
                       className={cn(
-                        'py-2 text-center text-[11px] font-semibold uppercase tracking-widest',
-                        i === 0 || i === 6 ? 'text-[#c0c4cc]' : 'text-[#9ca3af]',
-                        i > 0 && 'border-l border-[#f3f4f6]',
+                        'py-2 text-center text-[11px] font-semibold uppercase tracking-wider',
+                        i === 0 || i === 6 ? 'text-gray-400' : 'text-gray-500',
                       )}
                     >
                       {d}
                     </div>
                   ))}
                 </div>
-                <div className="p-3 overflow-x-auto">
-                  <div className="min-w-[560px] grid grid-cols-7 gap-2">
+                {/* Grid — cells share borders, no gap */}
+                <div className="overflow-x-auto flex-1">
+                  <div className="min-w-[560px] grid grid-cols-7 border-l border-t border-gray-100">
                     {calendarDays.map(day => (
                       <CalendarCell
                         key={day.toISOString()}
@@ -1286,6 +1425,7 @@ export function ContentCalendar() {
                         currentMonth={currentMonth}
                         onPostClick={openPostPreview}
                         onDayClick={(ds) => navigate(`/dashboard/create-post?scheduled_date=${ds}`)}
+                        onMoreClick={(ds, ps) => setDayPopup({ date: ds, posts: ps })}
                       />
                     ))}
                   </div>
@@ -1318,35 +1458,54 @@ export function ContentCalendar() {
           </div>
         </div>
 
+        {/* Day posts popup */}
+        {dayPopup && (
+          <DayPostsPopup
+            date={dayPopup.date}
+            posts={dayPopup.posts}
+            onPostClick={openPostPreview}
+            onClose={() => setDayPopup(null)}
+          />
+        )}
+
         {/* Preview Modal */}
         <AnimatePresence>
           {selectedPost && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setIsFetchingImage(false); }}>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setPreviewVideoUrl(null); setIsFetchingImage(false); }}>
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.25, ease: [0.33, 1, 0.68, 1] }}
-                className="w-full max-w-2xl rounded-2xl border border-[#e8eaed] bg-white shadow-2xl flex flex-col"
+                className="w-full max-w-2xl max-h-[90vh] rounded-2xl border border-[#e8eaed] bg-white shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-[#e8eaed] px-5 py-3.5 shrink-0">
                   <h3 className="text-[15px] font-bold text-[#111827]">Post Preview</h3>
-                  <button className="h-7 w-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setIsFetchingImage(false); }}>
+                  <button className="h-7 w-7 flex items-center justify-center rounded-lg text-[#9ca3af] hover:text-[#374151] hover:bg-[#f3f4f6] transition-colors" onClick={() => { setSelectedPost(null); setPreviewImageUrl(null); setPreviewVideoUrl(null); setIsFetchingImage(false); }}>
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="p-4 bg-[#f8f9fb] shrink-0">
+                <div className="relative p-4 bg-[#f8f9fb] overflow-y-auto flex-1 min-h-0">
                   <LinkedInPreview
                     content={selectedPost.content}
                     linkUrl={selectedPost.link_url}
                     postType={resolvePreviewType(selectedPost)}
-                    imagePreviewUrl={previewImageUrl ?? (isFetchingImage ? undefined : resolveImagePreview(selectedPost))}
-                    videoUrl={resolveVideoPreview(selectedPost)}
+                    imagePreviewUrl={previewImageUrl ?? undefined}
+                    videoUrl={previewVideoUrl ?? resolveVideoPreview(selectedPost)}
                     authorName={previewName}
                     authorHeadline={previewHeadline}
                     authorAvatar={previewAvatar}
                   />
+                  {/* Loading overlay — shown while the authenticated image fetch is in flight */}
+                  {isFetchingImage && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#f8f9fb]/80 backdrop-blur-[1px]">
+                      <div className="flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3 py-1.5 shadow-sm text-[12px] text-gray-500 font-medium">
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#0a66c2]" />
+                        Loading image…
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="border-t border-[#e8eaed] px-5 py-3 flex flex-wrap items-center justify-between gap-2 shrink-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1382,12 +1541,8 @@ export function ContentCalendar() {
         <DragOverlay dropAnimation={null}>
           {activePost && (
             activePost.status === 'draft' && !activePost.scheduled_at ? (
-              <div className="w-[200px] rounded-xl border border-amber-200 bg-white p-3 shadow-2xl rotate-2 opacity-95">
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 capitalize mb-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                  {activePost.post_type}
-                </span>
-                <p className="text-[11px] text-gray-700 line-clamp-2 leading-relaxed">{activePost.content}</p>
+              <div className="w-[180px] rounded-lg border-l-[3px] border-amber-400 bg-amber-100 px-2 py-1.5 shadow-xl rotate-1 opacity-95">
+                <p className="text-[11px] font-medium text-amber-900 line-clamp-2 leading-snug">{activePost.content}</p>
               </div>
             ) : (
               <PostChip post={activePost} overlay />

@@ -297,8 +297,9 @@ export const postsAPI = {
 
   /**
    * PATCH /posts/:id
-   * Update content, link_url, post_type, or scheduled_at of a draft/scheduled post.
+   * Update content, link_url, post_type, scheduled_at, or image of a draft/scheduled post.
    * Pass scheduled_at: null to clear the schedule (converts back to draft).
+   * Pass image_file to replace the image on an image post.
    */
   updatePost: async (
     id: string,
@@ -308,8 +309,26 @@ export const postsAPI = {
       post_type?: 'text' | 'image' | 'link' | 'video';
       scheduled_at?: string | null;
       status?: 'draft' | 'scheduled';
+      image_file?: File;
+      video_file?: File;
+      video_url?: string | null;
     }
   ) => {
+    if (updates.image_file || updates.video_file) {
+      const { image_file, video_file, ...rest } = updates;
+      const form = new FormData();
+      for (const [k, v] of Object.entries(rest)) {
+        if (v === undefined) continue;
+        form.append(k, v === null ? '' : String(v));
+      }
+      if (image_file) form.append('image', image_file, image_file.name);
+      if (video_file) form.append('video', video_file, video_file.name);
+      const response = await api.patch(`/posts/${id}`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300_000,
+      });
+      return response.data as { success: boolean; post: Post };
+    }
     const response = await api.patch(`/posts/${id}`, updates);
     return response.data as { success: boolean; post: Post };
   },

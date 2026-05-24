@@ -9,13 +9,10 @@ import { Dashboard } from './pages/Dashboard';
 import { CreatePost } from './pages/CreatePost';
 import { Analytics } from './pages/Analytics';
 import { LinkedInVault } from './pages/LinkedInVault';
-import { Settings } from './pages/Settings';
-import { Automation } from './pages/Automation';
 import { Posts } from './pages/Posts';
 import { ContentCalendar } from './pages/ContentCalendar';
 import { Ideas } from './pages/Ideas';
 import { AIInterview } from './pages/AIInterview';
-import { WeeklyWorkflow } from './pages/WeeklyWorkflow';
 import Landing from './pages/Landing';
 import { useAuthStore } from './store/useAuthStore';
 import { useLinkedInStore } from './store/useLinkedInStore';
@@ -140,11 +137,8 @@ function AppContent() {
             <Route path="linkedin-vault" element={<LinkedInVault />} />
             <Route path="posts" element={<Posts />} />
             <Route path="content-calendar" element={<ContentCalendar />} />
-            <Route path="automation" element={<Automation />} />
-            <Route path="settings" element={<Settings />} />
             <Route path="ideas" element={<Ideas />} />
             <Route path="ai-interview" element={<AIInterview />} />
-            <Route path="weekly" element={<WeeklyWorkflow />} />
           </Route>
         </Routes>
         <Toaster position="top-right" richColors />

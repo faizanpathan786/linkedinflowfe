@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Bell, CalendarDays, Menu, Sparkles, Check, XCircle, Info,
-  Trash2, AlertTriangle, X, Sliders, LogOut, Linkedin,
+  Bell, CalendarDays, Menu, PenLine, Check, XCircle, Info,
+  Trash2, AlertTriangle, X, LogOut, Linkedin,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -216,8 +216,8 @@ export function Header({ onMenuClick }: HeaderProps) {
             onClick={() => navigate('/dashboard/create-post')}
             className="hidden sm:flex h-8 items-center gap-1.5 px-3 rounded-lg bg-[#0a66c2] hover:bg-[#0958a8] text-white text-[12px] font-semibold transition-colors"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Create</span>
+            <PenLine className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Schedule Post</span>
           </button>
 
           {/* Calendar */}
@@ -368,13 +368,6 @@ export function Header({ onMenuClick }: HeaderProps) {
               <div className="p-1.5 space-y-0.5">
                 <DropdownMenuItem
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
-                  onClick={() => navigate('/dashboard/settings')}
-                >
-                  <Sliders className="h-3.5 w-3.5 text-[#9ca3af]" />
-                  <span className="text-[13px] text-[#374151]">Settings</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer"
                   onClick={() => navigate('/dashboard/linkedin-vault')}
                 >
                   <Linkedin className="h-3.5 w-3.5 text-[#9ca3af]" />
@@ -384,7 +377,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
               <div className="p-1.5 border-t border-[#e8eaed]">
                 <DropdownMenuItem
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50"
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 cursor-pointer text-rose-600 hover:bg-rose-50 hover:text-rose-600 focus:text-rose-600 focus:bg-rose-50"
                   onClick={async () => { await logout(); navigate('/'); }}
                 >
                   <LogOut className="h-3.5 w-3.5" />

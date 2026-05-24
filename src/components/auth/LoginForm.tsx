@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,6 +28,13 @@ export function LoginForm() {
   const [isLoading, setIsLoading]       = useState(false);
   const { setUser }  = useAuthStore();
   const navigate     = useNavigate();
+
+  useEffect(() => {
+    // Ensure pressing back always returns to the landing page,
+    // regardless of how the user arrived at /login (direct URL, redirect, etc.)
+    window.history.replaceState(null, '', '/');
+    window.history.pushState(null, '', '/login');
+  }, []);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -77,7 +84,7 @@ export function LoginForm() {
                     placeholder="you@example.com"
                     autoComplete="email"
                     {...register('email')}
-                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#f3f2ee] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
+                    className="w-full h-11 px-3.5 rounded-full text-sm bg-[#e5e7eb] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#9ca3af] focus:ring-2 focus:ring-[#9ca3af]/30 transition-colors [&:-webkit-autofill]:shadow-[0_0_0_1000px_#e5e7eb_inset] [&:-webkit-autofill]:[box-shadow:0_0_0_1000px_#e5e7eb_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#191919]"
                   />
                   {errors.email && (
                     <p className="text-xs text-red-500">{errors.email.message}</p>
@@ -96,7 +103,7 @@ export function LoginForm() {
                       placeholder="••••••••"
                       autoComplete="current-password"
                       {...register('password')}
-                      className="w-full h-11 px-3.5 pr-11 rounded-full text-sm bg-[#f3f2ee] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors"
+                      className="w-full h-11 px-3.5 pr-11 rounded-full text-sm bg-[#e5e7eb] border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#9ca3af] focus:ring-2 focus:ring-[#9ca3af]/30 transition-colors [&:-webkit-autofill]:shadow-[0_0_0_1000px_#e5e7eb_inset] [&:-webkit-autofill]:[box-shadow:0_0_0_1000px_#e5e7eb_inset] [&:-webkit-autofill]:[-webkit-text-fill-color:#191919]"
                     />
                     <button
                       type="button"

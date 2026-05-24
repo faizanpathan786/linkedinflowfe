@@ -9,12 +9,12 @@ import {
   Plus, RefreshCw, CheckCircle, FileText, Calendar,
   ArrowUpRight, BarChart3, MessageSquare, Lightbulb,
   Sparkles, Linkedin, Activity, TrendingUp, Clock,
-  CalendarDays,
+  CalendarDays, Lock, Shield, Zap,
 } from 'lucide-react';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLinkedInOAuth } from '@/hooks/useLinkedInOAuth';
-import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
+import { ConnectLinkedInOnboardModal } from '@/components/posts/ConnectLinkedInOnboardModal';
 import { cn } from '@/lib/utils';
 import { NumberTicker } from '@/components/ui/magic/number-ticker';
 import {
@@ -206,7 +206,7 @@ export function Dashboard() {
   // ── render ──────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4 animate-fade-in">
-      {showGate && <LinkedInGateModal onDismiss={() => setShowGate(false)} />}
+      <ConnectLinkedInOnboardModal open={showGate} onDismiss={() => setShowGate(false)} />
 
       {/* ── Page header ──────────────────────────────────────────────── */}
       <div className="px-1 py-1">
@@ -280,17 +280,53 @@ export function Dashboard() {
 
       {/* ── LinkedIn connect banner ───────────────────────────────────── */}
       {!isLoading && !isLinkedInConnected && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white border border-[#bfdbfe]">
-            <Linkedin className="h-4 w-4 text-[#0a66c2]" />
+        <div className="rounded-xl overflow-hidden border border-[#dce6f1] shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          {/* Gradient hero */}
+          <div className="relative bg-gradient-to-br from-[#0a66c2] via-[#0073b1] to-[#004182] px-6 py-6 overflow-hidden">
+            <div
+              className="absolute inset-0"
+              style={{ backgroundImage: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.12) 0%, transparent 70%)' }}
+            />
+            <div className="absolute -bottom-6 -right-6 opacity-[0.06]">
+              <Linkedin className="h-32 w-32 text-white" />
+            </div>
+            <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-center gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm border border-white/30">
+                <Linkedin className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0 text-center sm:text-left">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-white/60 mb-0.5">Get started</p>
+                <p className="text-[15px] font-bold text-white">Connect your LinkedIn account</p>
+                <p className="text-[12px] text-white/70 mt-0.5">Link LinkedIn to publish and schedule posts directly.</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={connect}
+                disabled={connectLoading}
+                className="shrink-0 h-9 px-5 !bg-white !text-[#0a66c2] hover:!bg-white/90 font-semibold shadow-md text-[13px]"
+              >
+                {connectLoading ? <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Lock className="mr-1.5 h-3.5 w-3.5" />}
+                Connect with LinkedIn
+              </Button>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-[#1e40af]">Connect your LinkedIn account</p>
-            <p className="text-[12px] text-[#3b82f6] mt-0.5">Link LinkedIn to publish and schedule posts directly.</p>
+
+          {/* Feature strip */}
+          <div className="bg-[#f8f9fb] px-6 py-3 flex flex-wrap gap-4">
+            {[
+              { icon: Zap,       label: 'Auto-publish scheduled posts' },
+              { icon: RefreshCw, label: 'Auto-retry on failures'       },
+              { icon: Shield,    label: 'Secure token-based access'    },
+              { icon: Clock,     label: 'Queue-based scheduling'       },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-1.5">
+                <div className="flex h-5 w-5 items-center justify-center rounded-md bg-white border border-[#dce6f1] shrink-0">
+                  <Icon className="h-2.5 w-2.5 text-[#0a66c2]" />
+                </div>
+                <span className="text-[11px] text-[#374151]">{label}</span>
+              </div>
+            ))}
           </div>
-          <Button size="sm" className="shrink-0 rounded-lg bg-[#0a66c2] hover:bg-[#0958a8]" onClick={connect} disabled={connectLoading}>
-            Connect
-          </Button>
         </div>
       )}
 

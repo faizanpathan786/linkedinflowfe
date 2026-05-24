@@ -52,6 +52,8 @@ interface LinkedInState {
   // Create post modal
   openCreatePost: () => void;
   closeCreatePost: () => void;
+  // Clear all user data on logout
+  resetUserData: () => void;
 }
 
 function createNotificationFromPost(post: Post): Omit<AppNotification, 'id' | 'createdAt' | 'read'> | null {
@@ -166,4 +168,12 @@ export const useLinkedInStore = create<LinkedInState>((set) => ({
 
   openCreatePost:  () => set({ isCreatePostOpen: true }),
   closeCreatePost: () => set({ isCreatePostOpen: false }),
+
+  resetUserData: () => set({
+    posts: [],
+    ideas: [],
+    notifications: [],
+    linkedInStatus: null,
+    hasInitializedPosts: false,
+  }),
 }));

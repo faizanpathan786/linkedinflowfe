@@ -250,11 +250,11 @@
 
   /* ── Sidebar nav item ──────────────────── */
   .sidebar-item {
-    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-100 cursor-pointer select-none text-[#3d4350] border border-transparent;
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-100 cursor-pointer select-none text-black border border-transparent;
   }
 
   .sidebar-item:hover {
-    @apply bg-[#f1f3f6] text-[#1a1d23];
+    @apply bg-[#f1f3f6] text-black;
   }
 
   .sidebar-item.active {

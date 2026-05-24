@@ -1,7 +1,7 @@
 import { useState, type MouseEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
+import { ConnectLinkedInOnboardModal } from '@/components/posts/ConnectLinkedInOnboardModal';
 import {
   LayoutDashboard,
   LogOut,
@@ -9,15 +9,12 @@ import {
   Linkedin,
   LineChart,
   Lock,
-  Sliders,
-  Zap,
   FileText,
   CalendarDays,
   Lightbulb,
   Sparkles,
   PenLine,
-  HelpCircle,
-  PanelLeft,
+  FileUp,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useLinkedInStore } from '@/store/useLinkedInStore';
@@ -33,6 +30,7 @@ const mainNav = [
   { title: 'Dashboard',    href: '/dashboard',                  icon: LayoutDashboard },
   { title: 'Create Post',  href: '/dashboard/create-post',      icon: PenLine         },
   { title: 'Posts',        href: '/dashboard/posts',            icon: FileText        },
+  { title: 'Bulk Posting', href: '/dashboard/posts?import=1',   icon: FileUp          },
   { title: 'Planner',      href: '/dashboard/content-calendar', icon: CalendarDays    },
   { title: 'Ideas',        href: '/dashboard/ideas',            icon: Lightbulb       },
   { title: 'AI Interview', href: '/dashboard/ai-interview',     icon: Sparkles        },
@@ -43,10 +41,6 @@ const insightsNav = [
   { title: 'LinkedIn Vault', href: '/dashboard/linkedin-vault', icon: Lock      },
 ];
 
-const systemNav = [
-  { title: 'Automation', href: '/dashboard/automation', icon: Zap     },
-  { title: 'Settings',   href: '/dashboard/settings',   icon: Sliders },
-];
 
 export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: SidebarProps) {
   const location = useLocation();
@@ -61,8 +55,10 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
   const [showGate, setShowGate] = useState(false);
 
   const NavItem = ({ item }: { item: typeof mainNav[0] }) => {
-    const itemPath = item.href.split('?')[0];
-    const isActive = location.pathname === itemPath;
+    const itemPath   = item.href.split('?')[0];
+    const itemSearch = item.href.includes('?') ? `?${item.href.split('?')[1]}` : '';
+    const isActive   = location.pathname === itemPath &&
+      (itemSearch ? location.search === itemSearch : !location.search.includes('import='));
 
     const handleClick = (e: MouseEvent) => {
       if (item.href === '/dashboard/create-post' && !isLinkedInConnected) {
@@ -114,9 +110,10 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
 
   return (
     <>
-      {showGate && (
-        <LinkedInGateModal onDismiss={() => setShowGate(false)} />
-      )}
+      <ConnectLinkedInOnboardModal
+        open={showGate}
+        onDismiss={() => setShowGate(false)}
+      />
       {/* Mobile backdrop */}
       <div
         className={cn(
@@ -140,57 +137,26 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
         {/* Brand */}
         <div className="flex h-[56px] items-center shrink-0 border-b border-[#e8eaed] px-3 gap-2">
 
-          {/* Collapsed: LinkedIn icon + expand toggle */}
-          {isCollapsed ? (
-            <div className="flex items-center justify-between w-full">
-              <button
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a66c2] text-white shrink-0"
-                onClick={() => { navigate('/dashboard'); setIsOpen(false); }}
-                aria-label="Go to Dashboard"
-              >
-                <Linkedin className="h-4 w-4" />
-              </button>
-              <button
-                className="hidden lg:flex h-7 w-7 items-center justify-center rounded-md text-gray-400 hover:bg-[#f1f3f6] hover:text-[#1a1d23] transition-colors"
-                onClick={() => setIsCollapsed(false)}
-                aria-label="Expand sidebar"
-              >
-                <PanelLeft className="h-4 w-4 rotate-180" />
-              </button>
+          {/* Logo + name */}
+          <button
+            className="flex items-center gap-2 min-w-0"
+            onClick={() => { navigate('/dashboard'); setIsOpen(false); }}
+            aria-label="Go to Dashboard"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a66c2] text-white shrink-0">
+              <Linkedin className="h-4 w-4" />
             </div>
-          ) : (
-            <>
-              {/* Logo + name */}
-              <button
-                className="flex items-center gap-2 min-w-0"
-                onClick={() => { navigate('/dashboard'); setIsOpen(false); }}
-                aria-label="Go to Dashboard"
-              >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0a66c2] text-white shrink-0">
-                  <Linkedin className="h-4 w-4" />
-                </div>
-                <span className="text-[14px] font-bold text-[#1a1d23] whitespace-nowrap">LinkedInFlow</span>
-              </button>
+            <span className="text-[14px] font-bold text-[#1a1d23] whitespace-nowrap">LinkedInFlow</span>
+          </button>
 
-              {/* Desktop: collapse */}
-              <button
-                className="hidden lg:flex ml-auto h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 hover:bg-[#f1f3f6] hover:text-[#1a1d23] transition-colors"
-                onClick={() => setIsCollapsed(true)}
-                aria-label="Collapse sidebar"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-
-              {/* Mobile: close drawer */}
-              <button
-                className="lg:hidden ml-auto h-7 w-7 shrink-0 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                onClick={() => setIsOpen(false)}
-                aria-label="Close navigation menu"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </>
-          )}
+          {/* Mobile: close drawer */}
+          <button
+            className="lg:hidden ml-auto h-7 w-7 shrink-0 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -212,33 +178,14 @@ export function Sidebar({ isOpen, setIsOpen, isCollapsed, setIsCollapsed }: Side
             </div>
           </div>
 
-          {/* System */}
-          <div className="mt-4">
-            {!isCollapsed && (
-              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9ca3af]">System</p>
-            )}
-            {isCollapsed && <div className="mx-1.5 mb-2 border-t border-[#e8eaed]" />}
-            <div className="space-y-0.5">
-              {systemNav.map(item => <NavItem key={item.href} item={item} />)}
-            </div>
-          </div>
-
         </nav>
 
         {/* Bottom: help + user */}
         <div className={cn('shrink-0 border-t border-[#e8eaed]', isCollapsed ? 'px-1.5 py-2' : 'px-2 py-2')}>
 
           <button
-            className={cn('sidebar-item w-full', isCollapsed && 'h-9 w-9 justify-center !px-0 !gap-0')}
-            title={isCollapsed ? 'Help' : undefined}
-          >
-            <HelpCircle className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>Help Center</span>}
-          </button>
-
-          <button
             onClick={logout}
-            className={cn('sidebar-item w-full mt-0.5', isCollapsed && 'h-9 w-9 justify-center !px-0 !gap-0')}
+            className={cn('sidebar-item w-full mt-0.5 !text-rose-600 hover:!bg-rose-50 hover:!text-rose-600', isCollapsed && 'h-9 w-9 justify-center !px-0 !gap-0')}
             title={isCollapsed ? 'Sign out' : undefined}
           >
             <LogOut className="h-4 w-4 shrink-0" />

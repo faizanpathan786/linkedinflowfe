@@ -167,23 +167,6 @@ export function Analytics() {
     return { pct: Math.abs(Math.round((diff / prev) * 100)), up: diff >= 0 };
   }, [monthlyData]);
 
-  const bestDayTime = useMemo(() => {
-    const published = posts.filter(p => p.status === 'published' && p.published_at);
-    if (published.length < 3) return null;
-    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const dayCounts = new Array(7).fill(0), hourCounts = new Array(24).fill(0);
-    published.forEach(p => {
-      const d = new Date(p.published_at!);
-      dayCounts[d.getDay()]++;
-      hourCounts[d.getHours()]++;
-    });
-    const bestDayIdx  = dayCounts.indexOf(Math.max(...dayCounts));
-    const bestHourIdx = hourCounts.indexOf(Math.max(...hourCounts));
-    const ampm = bestHourIdx >= 12 ? 'PM' : 'AM';
-    const h12  = bestHourIdx % 12 === 0 ? 12 : bestHourIdx % 12;
-    return { day: days[bestDayIdx], hourLabel: `${h12}:00 ${ampm}`, dayCount: dayCounts[bestDayIdx], hourCount: hourCounts[bestHourIdx] };
-  }, [posts]);
-
   const topPublishedPosts = useMemo(() =>
     [...posts]
       .filter(p => p.status === 'published')
@@ -439,41 +422,6 @@ export function Analytics() {
                 </div>
               </div>
 
-              {/* Best time */}
-              {bestDayTime && (
-                <div className="rounded-xl border border-[#e8eaed] overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e8eaed] bg-[#fafafa]">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-3.5 w-3.5 text-[#0a66c2]" />
-                      <span className="text-[13px] font-semibold text-[#111827]">Best Time to Post</span>
-                    </div>
-                    <span className="text-[11px] font-medium text-[#0a66c2] bg-[#eff6ff] border border-[#dce6f1] rounded-full px-2 py-0.5">
-                      AI Insight
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 divide-x divide-[#f3f4f6]">
-                    {[
-                      { label: 'Best Day',  value: bestDayTime.day,       sub: `${bestDayTime.dayCount} posts published`,  barPct: (bestDayTime.dayCount / posts.filter(p => p.status === 'published' && p.published_at).length) * 100, color: '#0a66c2',  Icon: Calendar },
-                      { label: 'Best Hour', value: bestDayTime.hourLabel, sub: `${bestDayTime.hourCount} posts published`, barPct: (bestDayTime.hourCount / posts.filter(p => p.status === 'published' && p.published_at).length) * 100, color: '#10b981', Icon: Clock    },
-                    ].map(s => (
-                      <div key={s.label} className="px-5 py-4 space-y-2.5">
-                        <div className="flex items-center gap-1.5">
-                          <s.Icon className="h-3.5 w-3.5 text-[#9ca3af]" />
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#9ca3af]">{s.label}</p>
-                        </div>
-                        <p className="text-[18px] font-bold text-[#111827] leading-none">{s.value}</p>
-                        <div className="flex items-center gap-1.5">
-                          <div className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
-                          <p className="text-[11px] text-[#9ca3af]">{s.sub}</p>
-                        </div>
-                        <div className="h-1.5 w-full bg-[#f3f4f6] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${Math.min(100, s.barPct)}%`, background: s.color }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

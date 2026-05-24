@@ -10,6 +10,12 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { postsAPI } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -22,6 +28,7 @@ import {
   AlertTriangle,
   RefreshCw,
   X,
+  ChevronDown,
 } from 'lucide-react';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -244,38 +251,76 @@ function buildCanonicalImport(rows: ParsedRow[]): { normalizedRows: NormalizedIm
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function DownloadTemplateButton() {
-  const [loading, setLoading] = useState(false);
+  const HEADERS = ['content', 'post_type', 'link_url', 'scheduled_at', 'publish_now', 'image_url', 'video_url'];
+  const EXAMPLE = [
+    'Write your post content here. This is a sample LinkedIn post.',
+    'text',
+    '',
+    '2025-06-01 09:00',
+    'false',
+    '',
+    '',
+  ];
 
-  const handleDownload = async () => {
-    try {
-      setLoading(true);
-      await postsAPI.downloadTemplate();
-      toast.success('Template downloaded.');
-    } catch (err: any) {
-      const msg =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        'Could not download template. Check your connection.';
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+  const buildWorkbook = () => {
+    const ws = XLSX.utils.aoa_to_sheet([HEADERS, EXAMPLE]);
+    ws['!cols'] = [{ wch: 60 }, { wch: 12 }, { wch: 30 }, { wch: 20 }, { wch: 13 }, { wch: 30 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Posts');
+    return wb;
+  };
+
+  const downloadExcel = () => {
+    const wb = buildWorkbook();
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'linkedinflow_import_template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Excel template downloaded.');
+  };
+
+  const downloadCSV = () => {
+    const rows = [HEADERS, EXAMPLE].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([rows], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'bulk_posts_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('CSV template downloaded.');
   };
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      className="gap-1.5 text-[13px]"
-      onClick={handleDownload}
-      disabled={loading}
-    >
-      {loading
-        ? <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-        : <Download  className="h-3.5 w-3.5" />}
-      Download Template
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-[13px]">
+          <Download className="h-3.5 w-3.5" />
+          Download Template
+          <ChevronDown className="h-3 w-3 ml-0.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={downloadExcel} className="gap-2 cursor-pointer">
+          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+          <div>
+            <p className="text-[13px] font-medium">Excel</p>
+            <p className="text-[11px] text-muted-foreground">.xlsx file</p>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadCSV} className="gap-2 cursor-pointer">
+          <FileSpreadsheet className="h-4 w-4 text-blue-500" />
+          <div>
+            <p className="text-[13px] font-medium">Google Sheets</p>
+            <p className="text-[11px] text-muted-foreground">Copies & opens Google Sheets</p>
+          </div>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -679,8 +724,8 @@ export function ImportModal({ open, onOpenChange, onImportDone }: ImportModalPro
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <div className="icon-container-sm">
               <FileSpreadsheet className="h-3.5 w-3.5" />
@@ -692,12 +737,12 @@ export function ImportModal({ open, onOpenChange, onImportDone }: ImportModalPro
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mt-2 space-y-5">
+        <div className="mt-2 flex-1 overflow-y-auto space-y-5 pr-1">
 
           {/* ── Upload step ── */}
           {step === 'upload' && (
             <>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">
                   Don't have a template?{' '}
                   <span className="text-foreground font-medium">Download one below.</span>
@@ -780,15 +825,6 @@ export function ImportModal({ open, onOpenChange, onImportDone }: ImportModalPro
                 </div>
               )}
 
-              <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" size="sm" onClick={reset}>
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={handleImport} disabled={normalizedRows.length === 0 || clientIssues.length > 0}>
-                  <Upload className="mr-1.5 h-3.5 w-3.5" />
-                  Import {normalizedRows.length} post{normalizedRows.length !== 1 ? 's' : ''}
-                </Button>
-              </div>
             </>
           )}
 
@@ -817,6 +853,19 @@ export function ImportModal({ open, onOpenChange, onImportDone }: ImportModalPro
           )}
 
         </div>
+
+        {/* Pinned footer — only shown on preview step */}
+        {step === 'preview' && (
+          <div className="shrink-0 flex gap-2 pt-3 border-t border-border mt-2">
+            <Button variant="outline" size="sm" className="flex-1" onClick={reset}>
+              Cancel
+            </Button>
+            <Button size="sm" className="flex-[2]" onClick={handleImport} disabled={normalizedRows.length === 0 || clientIssues.length > 0}>
+              <Upload className="mr-1.5 h-3.5 w-3.5" />
+              Import {normalizedRows.length} post{normalizedRows.length !== 1 ? 's' : ''}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

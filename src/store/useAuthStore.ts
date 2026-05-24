@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { authAPI } from '@/lib/api';
+import { useLinkedInStore } from '@/store/useLinkedInStore';
 
 interface User {
   id: string;
@@ -42,6 +43,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       // best-effort — clear state regardless
     }
+    useLinkedInStore.getState().resetUserData();
     set({ user: null, isAuthenticated: false });
   },
 }));

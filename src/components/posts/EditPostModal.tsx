@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { postsAPI, type Post } from '@/lib/api';
+import api, { postsAPI, type Post } from '@/lib/api';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useDropzone } from 'react-dropzone';
 import {
   Calendar,
   Clock,
@@ -27,6 +28,10 @@ import {
   Link as LinkIcon,
   Image as ImageIcon,
   Play,
+  Upload,
+  RotateCcw,
+  Video,
+  X,
 } from 'lucide-react';
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -34,6 +39,7 @@ import {
 const editSchema = z.object({
   content: z.string().min(1, 'Content is required').max(3000, 'Max 3000 characters'),
   link_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  video_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 });
 
 type EditFormData = z.infer<typeof editSchema>;
@@ -118,7 +124,7 @@ interface EditPostModalProps {
   post: Post | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSaved: (updated: Post) => void;
+  onSaved: (updated: Post, newImageUrl?: string, newVideoUrl?: string) => void;
 }
 
 export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostModalProps) {
@@ -126,17 +132,46 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
   const [saveMode, setSaveMode] = useState<'draft' | 'scheduled'>('draft');
   const [scheduledAt, setScheduledAt] = useState('');
   const [scheduleErr, setScheduleErr] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);  // new file preview
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null); // fetched blob URL
+  const previewUrlRef = useRef<string | null>(null);
+  const existingImageUrlRef = useRef<string | null>(null);
+  // Video state
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
+  const videoObjectUrlRef = useRef<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     register,
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<EditFormData>({ resolver: zodResolver(editSchema) });
 
   const content = watch('content') ?? '';
   const linkUrl = watch('link_url') ?? '';
+
+  const { getRootProps: getVideoRootProps, getInputProps: getVideoDropInputProps, isDragActive: isVideoDragActive } = useDropzone({
+    accept: { 'video/*': ['.mp4', '.mov', '.avi', '.webm', '.mkv'] },
+    maxFiles: 1,
+    maxSize: 200 * 1024 * 1024,
+    noClick: true, // we trigger via button/ref
+    onDrop: (accepted, rejected) => {
+      if (rejected.length > 0) { toast.error('Use an .mp4, .mov, .avi, .webm or .mkv file under 200 MB.'); return; }
+      const file = accepted[0];
+      if (!file) return;
+      if (videoObjectUrlRef.current) URL.revokeObjectURL(videoObjectUrlRef.current);
+      const url = URL.createObjectURL(file);
+      videoObjectUrlRef.current = url;
+      setVideoFile(file);
+      setVideoObjectUrl(url);
+      setValue('video_url', '');
+    },
+  });
 
   // Derive the live post_type so the badge updates as the user types
   const livePostType: Post['post_type'] =
@@ -151,7 +186,7 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
   // Populate form when post changes
   useEffect(() => {
     if (!post) return;
-    reset({ content: post.content, link_url: post.link_url ?? '' });
+    reset({ content: post.content, link_url: post.link_url ?? '', video_url: post.video_url ?? '' });
 
     if (post.status === 'scheduled' && post.scheduled_at) {
       setSaveMode('scheduled');
@@ -161,6 +196,42 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
       setScheduledAt('');
     }
     setScheduleErr('');
+
+    // Reset image state
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+    if (existingImageUrlRef.current) {
+      URL.revokeObjectURL(existingImageUrlRef.current);
+      existingImageUrlRef.current = null;
+    }
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImageUrl(null);
+
+    // Fetch existing image with auth headers so the <img> can display it
+    if (post.post_type === 'image') {
+      if (post.image_url?.startsWith('data:') || post.image_url?.startsWith('http')) {
+        setExistingImageUrl(post.image_url);
+      } else {
+        api.get(`/posts/${post.id}/image`, { responseType: 'blob' })
+          .then((res) => {
+            const url = URL.createObjectURL(res.data as Blob);
+            existingImageUrlRef.current = url;
+            setExistingImageUrl(url);
+          })
+          .catch(() => {}); // silently fail — fallback shows "Image unavailable"
+      }
+    }
+
+    // Reset video state
+    if (videoObjectUrlRef.current) {
+      URL.revokeObjectURL(videoObjectUrlRef.current);
+      videoObjectUrlRef.current = null;
+    }
+    setVideoFile(null);
+    setVideoObjectUrl(null);
   }, [post, reset]);
 
   const handleClose = () => { if (!isSaving) onOpenChange(false); };
@@ -180,7 +251,12 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
     // Build minimal diff payload
     const payload = buildPayload(data, post, saveMode, scheduledAt);
 
-    if (Object.keys(payload).length === 0) {
+    // Include video_url change in payload
+    const newVideoUrl = (data as any).video_url?.trim() || null;
+    const oldVideoUrl = post.video_url || null;
+    if (!videoFile && newVideoUrl !== oldVideoUrl) payload.video_url = newVideoUrl;
+
+    if (Object.keys(payload).length === 0 && !imageFile && !videoFile) {
       toast.info('No changes to save.');
       onOpenChange(false);
       return;
@@ -188,8 +264,15 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
 
     setIsSaving(true);
     try {
-      const result = await postsAPI.updatePost(post.id, payload);
-      onSaved(result.post);
+      const result = await postsAPI.updatePost(post.id, {
+        ...payload,
+        ...(imageFile ? { image_file: imageFile } : {}),
+        ...(videoFile ? { video_file: videoFile } : {}),
+      });
+      // Create fresh blob URLs so the preview shows the new media instantly
+      const newImageUrl = imageFile ? URL.createObjectURL(imageFile) : undefined;
+      const newVideoUrl = videoFile ? URL.createObjectURL(videoFile) : undefined;
+      onSaved(result.post, newImageUrl, newVideoUrl);
       toast.success(
         saveMode === 'scheduled'
           ? `Post rescheduled for ${new Date(scheduledAt).toLocaleString()}`
@@ -211,10 +294,11 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
 
   const isScheduled = post.status === 'scheduled';
   const isImagePost = post.post_type === 'image';
+  const isVideoPost = post.post_type === 'video';
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -229,7 +313,7 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="mt-1 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-1 space-y-3">
 
           {/* ── Current schedule banner ── */}
           {isScheduled && post.scheduled_at && (
@@ -256,7 +340,7 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
             <Textarea
               id="ep-content"
               placeholder="What's happening in your professional world?"
-              className="min-h-36 resize-none"
+              className="min-h-24 resize-none"
               {...register('content')}
             />
             <div className="flex items-center justify-between">
@@ -274,8 +358,8 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
             </div>
           </div>
 
-          {/* ── Link URL (hidden for image posts) ── */}
-          {!isImagePost && (
+          {/* ── Link URL (only for text/link posts) ── */}
+          {!isImagePost && !isVideoPost && (
             <div className="space-y-1.5">
               <Label htmlFor="ep-link">Link URL (optional)</Label>
               <Input
@@ -293,16 +377,224 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
             </div>
           )}
 
-          {/* ── Image post notice ── */}
+          {/* ── Image editor ── */}
           {isImagePost && (
-            <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
-              <ImageIcon className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>This is an image post. The attached image cannot be changed here.</span>
+            <div className="space-y-2">
+              <Label>Image</Label>
+
+              {/* Preview */}
+              <div className="relative rounded-lg overflow-hidden border border-border bg-muted/30">
+                {(imagePreview ?? existingImageUrl) ? (
+                  <img
+                    src={imagePreview ?? existingImageUrl!}
+                    alt="Post image"
+                    className="w-full max-h-44 object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2 py-10 text-muted-foreground">
+                    <ImageIcon className="h-8 w-8" />
+                    <span className="text-xs">Loading image…</span>
+                  </div>
+                )}
+                {imagePreview && (
+                  <span className="absolute top-2 left-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-medium">
+                    New
+                  </span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => document.getElementById('ep-image-input')?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {imagePreview ? 'Change image' : 'Replace image'}
+                </Button>
+                {imagePreview && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-muted-foreground"
+                    onClick={() => {
+                      if (previewUrlRef.current) {
+                        URL.revokeObjectURL(previewUrlRef.current);
+                        previewUrlRef.current = null;
+                      }
+                      setImageFile(null);
+                      setImagePreview(null);
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Undo
+                  </Button>
+                )}
+              </div>
+
+              <input
+                id="ep-image-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+                  const url = URL.createObjectURL(file);
+                  previewUrlRef.current = url;
+                  setImageFile(file);
+                  setImagePreview(url);
+                  e.target.value = '';
+                }}
+              />
+              <p className="text-[11px] text-muted-foreground">Supported: JPG, PNG, GIF, WebP</p>
+            </div>
+          )}
+
+          {/* ── Video editor ── */}
+          {post.post_type === 'video' && (
+            <div className="space-y-2">
+              <Label>Video</Label>
+
+              {/* Current video preview */}
+              {(videoObjectUrl || post.video_url) && (
+                <div
+                  {...getVideoRootProps()}
+                  className={cn(
+                    'relative rounded-lg overflow-hidden border border-border bg-muted/30 transition-colors',
+                    isVideoDragActive && 'border-primary bg-primary/5'
+                  )}
+                >
+                  <video
+                    src={videoObjectUrl ?? post.video_url ?? undefined}
+                    controls
+                    className="w-full max-h-44 object-contain"
+                    preload="metadata"
+                  />
+                  {videoFile && (
+                    <span className="absolute top-2 left-2 text-[10px] bg-green-500 text-white px-2 py-0.5 rounded-full font-medium">
+                      New
+                    </span>
+                  )}
+                  {isVideoDragActive && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-primary/10">
+                      <p className="text-sm font-medium text-primary">Drop video here</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {videoFile && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {videoFile.name} · {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                </p>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/quicktime,video/avi,video/webm,video/x-matroska"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (videoObjectUrlRef.current) URL.revokeObjectURL(videoObjectUrlRef.current);
+                  const url = URL.createObjectURL(file);
+                  videoObjectUrlRef.current = url;
+                  setVideoFile(file);
+                  setVideoObjectUrl(url);
+                  setValue('video_url', '');
+                  e.target.value = '';
+                }}
+              />
+
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={() => videoInputRef.current?.click()}
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  {videoFile ? 'Change file' : 'Replace with file'}
+                </Button>
+                {videoFile && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 text-xs text-muted-foreground"
+                    onClick={() => {
+                      if (videoObjectUrlRef.current) {
+                        URL.revokeObjectURL(videoObjectUrlRef.current);
+                        videoObjectUrlRef.current = null;
+                      }
+                      setVideoFile(null);
+                      setVideoObjectUrl(null);
+                      setValue('video_url', post.video_url ?? '');
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Undo
+                  </Button>
+                )}
+              </div>
+
+              {/* URL field */}
+              <div className="space-y-1.5">
+                <Label htmlFor="ep-video-url" className="text-xs text-muted-foreground">
+                  Or replace with a public video URL
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="ep-video-url"
+                    type="url"
+                    placeholder="https://example.com/video.mp4"
+                    {...register('video_url')}
+                    onChange={(e) => {
+                      register('video_url').onChange(e);
+                      if (e.target.value && videoFile) {
+                        if (videoObjectUrlRef.current) URL.revokeObjectURL(videoObjectUrlRef.current);
+                        videoObjectUrlRef.current = null;
+                        setVideoFile(null);
+                        setVideoObjectUrl(null);
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  {watch('video_url') && watch('video_url') !== post.video_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="px-2 shrink-0"
+                      onClick={() => setValue('video_url', post.video_url ?? '')}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+                {errors.video_url && (
+                  <p className="text-xs text-destructive">{errors.video_url.message}</p>
+                )}
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Drag a file onto the preview, click "Replace with file", or enter a URL. MP4, MOV, AVI, WebM up to 200 MB.
+              </p>
             </div>
           )}
 
           {/* ── Save as: Draft / Schedule ── */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label>Save as</Label>
             <div className="grid grid-cols-2 gap-2">
               {(
@@ -357,7 +649,7 @@ export function EditPostModal({ post, open, onOpenChange, onSaved }: EditPostMod
           </div>
 
           {/* ── Actions ── */}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleClose} disabled={isSaving}>
               Cancel
             </Button>

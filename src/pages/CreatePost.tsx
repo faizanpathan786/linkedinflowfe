@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,7 +20,6 @@ import {
   Link as LinkIcon,
   Video,
   FileText,
-  ListOrdered,
   ExternalLink,
   RotateCcw,
   Wand2,
@@ -29,17 +28,16 @@ import { useLinkedInStore } from '@/store/useLinkedInStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useDataStore } from '@/store/useDataStore';
 import { postsAPI } from '@/lib/api';
-import { format } from 'date-fns';
-import { loadQueueSettings, getNextQueueSlot } from '@/lib/queue';
+
+
 import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LinkedInPreview } from '@/components/posts/LinkedInPreview';
-import { PostAnalyzer } from '@/components/posts/PostAnalyzer';
 import { PageTransition } from '@/components/ui/magic/page-transition';
 import { ImportModal } from '@/components/posts/ImportModal';
-import { LinkedInGateModal } from '@/components/posts/LinkedInGateModal';
+import { ConnectLinkedInOnboardModal } from '@/components/posts/ConnectLinkedInOnboardModal';
 
 const postSchema = z.object({
   content: z.string().min(1, 'Content is required').max(3000, 'Content must be under 3000 characters'),
@@ -80,6 +78,7 @@ export function CreatePost() {
   const [mediaType, setMediaType] = useState<MediaType>('text');
   const [uploadedVideo, setUploadedVideo] = useState<File | null>(null);
   const [videoObjectUrl, setVideoObjectUrl] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const { addPost, linkedInStatus, posts } = useLinkedInStore();
   const { user } = useAuthStore();
   const { brandVoice } = useDataStore();
@@ -94,13 +93,6 @@ export function CreatePost() {
   const previewHeadline = liProfile?.headline || liProfile?.localizedHeadline || 'LinkedIn Member';
   const previewAvatar = liProfile?.pictureUrl || undefined;
   const navigate = useNavigate();
-
-  const queueSettings = useMemo(() => loadQueueSettings(), []);
-  const nextQueueSlot = useMemo(
-    () => getNextQueueSlot(queueSettings, posts),
-    [queueSettings, posts]
-  );
-  const [useQueue, setUseQueue] = useState(false);
 
   const [importOpen, setImportOpen] = useState(false);
   const [publishedPostId, setPublishedPostId] = useState<string | null>(null);
@@ -287,7 +279,6 @@ export function CreatePost() {
       setImagePreview(null);
       setScheduledAt('');
       setMediaType('text');
-      setUseQueue(false);
       clearVideo();
     } catch (error: any) {
       const msg =
@@ -307,7 +298,7 @@ export function CreatePost() {
   const videoUrl = watch('video_url');
 
   if (!isLinkedInConnected) {
-    return <LinkedInGateModal onDismiss={() => navigate('/dashboard')} />;
+    return <ConnectLinkedInOnboardModal open onDismiss={() => navigate('/dashboard')} />;
   }
 
   return (
@@ -377,24 +368,6 @@ export function CreatePost() {
           )}
         </div>
 
-        {/* Post Analyzer */}
-        {import.meta.env.VITE_POST_ANALYZER_ENABLED === 'true' && content && content.length >= 10 && (
-          <div className="shrink-0 rounded-xl border border-[#e0dfdc] bg-white p-4 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
-            <PostAnalyzer
-              content={content}
-              postType={mediaType}
-              onTimeSelected={(hour, _day) => {
-                const now = new Date();
-                const targetDate = new Date(now);
-                targetDate.setHours(hour, 0, 0, 0);
-                if (targetDate <= now) targetDate.setDate(targetDate.getDate() + 1);
-                setScheduledAt(targetDate.toISOString().slice(0, 16));
-                setValue('schedule', true);
-                setValue('publish_now', false);
-              }}
-            />
-          </div>
-        )}
 
         {/* Main grid */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-3 lg:flex-1 lg:overflow-hidden">
@@ -586,126 +559,163 @@ export function CreatePost() {
                 {/* Video upload */}
                 {mediaType === 'video' && (
                   <div className="space-y-3">
+                    {/* Hidden input always present so Replace button can trigger it */}
+                    <input
+                      {...getVideoInputProps()}
+                      ref={(el) => { videoInputRef.current = el; (getVideoInputProps() as any).ref?.(el); }}
+                      style={{ display: 'none' }}
+                    />
+
                     {!uploadedVideo ? (
-                      <>
-                        <div
-                          {...getVideoRootProps()}
-                          className={cn(
-                            'rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
-                            isVideoDragActive ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]'
-                          )}
-                        >
-                          <input {...getVideoInputProps()} />
-                          <Video className="h-7 w-7 text-[#0a66c2] mx-auto mb-2 opacity-60" />
-                          <p className="text-sm font-medium text-[#191919]">{isVideoDragActive ? 'Drop video here' : 'Drag & drop or click to upload'}</p>
-                          <p className="text-xs text-[#595959] mt-0.5">MP4, MOV, AVI, WebM up to 200 MB</p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="video_url" className="text-xs font-semibold text-[#374151]">Or enter a public video URL</Label>
-                          <Input id="video_url" type="url" placeholder="https://example.com/video.mp4"
-                            {...register('video_url')}
-                            className="h-9 !border-[#dce6f1] !bg-[#f8fafc] !text-[#191919]"
-                          />
-                          {errors.video_url && <p className="text-xs text-red-600">{errors.video_url.message}</p>}
-                        </div>
-                      </>
+                      <div
+                        {...getVideoRootProps()}
+                        className={cn(
+                          'rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors',
+                          isVideoDragActive ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]'
+                        )}
+                      >
+                        <Video className="h-7 w-7 text-[#0a66c2] mx-auto mb-2 opacity-60" />
+                        <p className="text-sm font-medium text-[#191919]">{isVideoDragActive ? 'Drop video here' : 'Drag & drop or click to upload'}</p>
+                        <p className="text-xs text-[#595959] mt-0.5">MP4, MOV, AVI, WebM up to 200 MB</p>
+                      </div>
                     ) : (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
                         <div className="relative rounded-xl overflow-hidden border border-[#dce6f1] bg-[#f8fafc]">
                           <video src={videoObjectUrl!} controls className="w-full max-h-48 object-contain" preload="metadata" />
-                          <button type="button" onClick={clearVideo}
-                            className="absolute top-2 right-2 h-6 w-6 rounded-full bg-white border border-[#dce6f1] flex items-center justify-center shadow-sm hover:bg-[#f3f2ee]">
-                            <X className="h-3 w-3 text-[#595959]" />
-                          </button>
                         </div>
-                        <p className="text-xs text-[#595959] truncate">{uploadedVideo.name} · {(uploadedVideo.size / (1024 * 1024)).toFixed(1)} MB</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs text-[#595959] truncate flex-1">{uploadedVideo.name} · {(uploadedVideo.size / (1024 * 1024)).toFixed(1)} MB</p>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => videoInputRef.current?.click()}
+                              className="h-7 flex items-center gap-1 px-2.5 rounded-lg border border-[#dce6f1] bg-white text-[11px] font-medium text-[#374151] hover:bg-[#f3f2ee] transition-colors"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={clearVideo}
+                              className="h-7 flex items-center gap-1 px-2.5 rounded-lg border border-[#dce6f1] bg-white text-[11px] font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
+
+                    {/* URL field — always visible in video mode */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="video_url" className="text-xs font-semibold text-[#374151]">
+                        {uploadedVideo ? 'Or switch to a public video URL' : 'Or enter a public video URL'}
+                      </Label>
+                      <Input
+                        id="video_url"
+                        type="url"
+                        placeholder="https://example.com/video.mp4"
+                        {...register('video_url')}
+                        onChange={(e) => {
+                          register('video_url').onChange(e);
+                          if (e.target.value && uploadedVideo) clearVideo();
+                        }}
+                        className="h-9 !border-[#dce6f1] !bg-[#f8fafc] !text-[#191919]"
+                      />
+                      {errors.video_url && <p className="text-xs text-red-600">{errors.video_url.message}</p>}
+                    </div>
                   </div>
                 )}
 
                 {/* Publishing options */}
                 <div className="space-y-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-[#595959]">Publishing</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Publish now */}
-                    <label className={cn(
-                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
-                      publishNow && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40',
-                      !isLinkedInConnected && 'opacity-50 cursor-not-allowed'
-                    )}>
-                      <input type="radio" checked={publishNow && !schedule && !useQueue}
-                        onChange={() => { setValue('publish_now', true); setValue('schedule', false); setUseQueue(false); }}
-                        disabled={!isLinkedInConnected} className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <Send className="h-3 w-3 text-[#0a66c2] shrink-0" />
-                          <p className="text-xs font-semibold text-[#191919]">Publish now</p>
-                        </div>
-                        <p className="text-[10px] text-[#595959]">Post immediately</p>
-                      </div>
-                    </label>
-
-                    {/* Schedule */}
-                    <label className={cn(
-                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
-                      schedule && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
-                    )}>
-                      <input type="radio" checked={schedule && !useQueue}
-                        onChange={() => { setValue('schedule', true); setValue('publish_now', false); setUseQueue(false); }}
-                        className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <Calendar className="h-3 w-3 text-[#0a66c2] shrink-0" />
-                          <p className="text-xs font-semibold text-[#191919]">Schedule</p>
-                        </div>
-                        <p className="text-[10px] text-[#595959]">Pick date & time</p>
-                      </div>
-                    </label>
+                  <div className="grid grid-cols-3 gap-2">
 
                     {/* Save draft */}
-                    <label className={cn(
-                      'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
-                      !publishNow && !schedule && !useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
-                    )}>
-                      <input type="radio" checked={!publishNow && !schedule && !useQueue}
-                        onChange={() => { setValue('publish_now', false); setValue('schedule', false); setUseQueue(false); }}
-                        className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <Clock className="h-3 w-3 text-[#0a66c2] shrink-0" />
-                          <p className="text-xs font-semibold text-[#191919]">Save draft</p>
-                        </div>
-                        <p className="text-[10px] text-[#595959]">Edit & publish later</p>
-                      </div>
-                    </label>
-
-                    {/* Queue */}
-                    {queueSettings.enabled && nextQueueSlot && (
-                      <label className={cn(
-                        'flex items-start gap-2.5 rounded-xl border p-3 cursor-pointer transition-all',
-                        useQueue ? 'border-[#0a66c2] bg-[#eef3f8]' : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/40'
+                    <button
+                      type="button"
+                      onClick={() => { setValue('publish_now', false); setValue('schedule', false); }}
+                      className={cn(
+                        'relative flex flex-col items-start gap-2.5 rounded-xl border p-3 text-left transition-all',
+                        !publishNow && !schedule
+                          ? 'border-[#0a66c2] bg-[#eef3f8] shadow-sm'
+                          : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]',
+                      )}
+                    >
+                      {!publishNow && !schedule && (
+                        <span className="absolute top-2 right-2 h-4 w-4 rounded-full bg-[#0a66c2] flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-white" />
+                        </span>
+                      )}
+                      <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                        !publishNow && !schedule ? 'bg-[#0a66c2]' : 'bg-[#e8eaed]'
                       )}>
-                        <input type="radio" checked={useQueue}
-                          onChange={() => {
-                            if (nextQueueSlot) {
-                              const local = new Date(nextQueueSlot.getTime() - nextQueueSlot.getTimezoneOffset() * 60000);
-                              setScheduledAt(local.toISOString().slice(0, 16));
-                              setValue('schedule', true);
-                              setValue('publish_now', false);
-                            }
-                            setUseQueue(true);
-                          }}
-                          className="mt-0.5 h-3.5 w-3.5 accent-[#0a66c2]" />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <ListOrdered className="h-3 w-3 text-[#0a66c2] shrink-0" />
-                            <p className="text-xs font-semibold text-[#191919]">Add to queue</p>
-                          </div>
-                          <p className="text-[10px] text-[#595959] truncate">{format(nextQueueSlot, "EEE MMM d 'at' h:mm a")}</p>
-                        </div>
-                      </label>
-                    )}
+                        <Clock className={cn('h-3.5 w-3.5', !publishNow && !schedule ? 'text-white' : 'text-[#6b7280]')} />
+                      </div>
+                      <div>
+                        <p className={cn('text-[12px] font-semibold leading-tight', !publishNow && !schedule ? 'text-[#0a66c2]' : 'text-[#191919]')}>Save Draft</p>
+                        <p className="text-[10px] text-[#9ca3af] mt-0.5 leading-tight">Edit & publish later</p>
+                      </div>
+                    </button>
+
+                    {/* Publish now */}
+                    <button
+                      type="button"
+                      onClick={() => { setValue('publish_now', true); setValue('schedule', false); }}
+                      disabled={!isLinkedInConnected}
+                      className={cn(
+                        'relative flex flex-col items-start gap-2.5 rounded-xl border p-3 text-left transition-all',
+                        publishNow && !schedule
+                          ? 'border-[#0a66c2] bg-[#eef3f8] shadow-sm'
+                          : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]',
+                        !isLinkedInConnected && 'opacity-50 cursor-not-allowed',
+                      )}
+                    >
+                      {publishNow && !schedule && (
+                        <span className="absolute top-2 right-2 h-4 w-4 rounded-full bg-[#0a66c2] flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-white" />
+                        </span>
+                      )}
+                      <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                        publishNow && !schedule ? 'bg-[#0a66c2]' : 'bg-[#e8eaed]'
+                      )}>
+                        <Send className={cn('h-3.5 w-3.5', publishNow && !schedule ? 'text-white' : 'text-[#6b7280]')} />
+                      </div>
+                      <div>
+                        <p className={cn('text-[12px] font-semibold leading-tight', publishNow && !schedule ? 'text-[#0a66c2]' : 'text-[#191919]')}>Publish Now</p>
+                        <p className="text-[10px] text-[#9ca3af] mt-0.5 leading-tight">Post immediately</p>
+                      </div>
+                    </button>
+
+                    {/* Schedule */}
+                    <button
+                      type="button"
+                      onClick={() => { setValue('schedule', true); setValue('publish_now', false); }}
+                      className={cn(
+                        'relative flex flex-col items-start gap-2.5 rounded-xl border p-3 text-left transition-all',
+                        schedule
+                          ? 'border-[#0a66c2] bg-[#eef3f8] shadow-sm'
+                          : 'border-[#dce6f1] bg-[#f8fafc] hover:border-[#0a66c2]/50 hover:bg-[#f0f4f8]',
+                      )}
+                    >
+                      {schedule && (
+                        <span className="absolute top-2 right-2 h-4 w-4 rounded-full bg-[#0a66c2] flex items-center justify-center">
+                          <CheckCircle className="h-2.5 w-2.5 text-white" />
+                        </span>
+                      )}
+                      <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0',
+                        schedule ? 'bg-[#0a66c2]' : 'bg-[#e8eaed]'
+                      )}>
+                        <Calendar className={cn('h-3.5 w-3.5', schedule ? 'text-white' : 'text-[#6b7280]')} />
+                      </div>
+                      <div>
+                        <p className={cn('text-[12px] font-semibold leading-tight', schedule ? 'text-[#0a66c2]' : 'text-[#191919]')}>Schedule</p>
+                        <p className="text-[10px] text-[#9ca3af] mt-0.5 leading-tight">Pick date & time</p>
+                      </div>
+                    </button>
+
                   </div>
 
                   {/* Datetime picker */}
@@ -735,8 +745,6 @@ export function CreatePost() {
                 >
                   {isSubmitting ? (
                     <><div className="mr-2 h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Creating…</>
-                  ) : useQueue ? (
-                    <><ListOrdered className="mr-2 h-4 w-4" />Add to Queue</>
                   ) : schedule ? (
                     <><Calendar className="mr-2 h-4 w-4" />Schedule Post</>
                   ) : publishNow ? (

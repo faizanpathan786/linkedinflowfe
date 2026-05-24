@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { postsAPI } from '@/lib/api';
 import { Sparkles, Copy, Loader2, ArrowRight, PenLine, Mic2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/store/useDataStore';
@@ -13,22 +12,32 @@ import { useLinkedInStore } from '@/store/useLinkedInStore';
 const QUESTIONS = [
   {
     key: 'q1' as const,
-    label: 'What happened?',
-    placeholder: 'We closed our first $10K deal. A customer told us our tool saved them 5 hours a week. I failed at something and learned from it…',
+    label: 'What do you want to talk about?',
+    placeholder: 'e.g. I just landed my first client, I learned something from a mistake, I have a tip that changed how I work…',
   },
   {
     key: 'q2' as const,
-    label: 'Who was it for?',
-    placeholder: 'B2B founders. My younger self. Anyone who has struggled with X…',
+    label: 'Who is this for?',
+    placeholder: 'e.g. people starting out, business owners, anyone who works in marketing…',
   },
   {
     key: 'q5' as const,
-    label: 'What should the reader do differently?',
-    placeholder: 'Stop doing X. Start asking Y. Rethink how you approach Z…',
+    label: 'What\'s the one thing you want them to remember?',
+    placeholder: 'e.g. don\'t give up too early, consistency beats perfection, ask for help sooner…',
+    optional: true,
   },
 ] as const;
 
 type StyleOption = 'story' | 'opinion' | 'insight';
+
+const TONE_OPTIONS = [
+  { value: 'professional',   label: 'Professional',      emoji: '💼' },
+  { value: 'casual',         label: 'Casual',            emoji: '😊' },
+  { value: 'authoritative',  label: 'Authoritative',     emoji: '🎯' },
+  { value: 'inspirational',  label: 'Inspirational',     emoji: '🚀' },
+  { value: 'educational',    label: 'Educational',       emoji: '📚' },
+  { value: 'storytelling',   label: 'Storytelling',      emoji: '📖' },
+];
 
 const STYLE_OPTIONS: Array<{ value: StyleOption; label: string; description: string; emoji: string }> = [
   { value: 'story',   label: 'Story',   emoji: '📖', description: 'Narrative arc with a punchline' },
@@ -57,9 +66,9 @@ ${brandVoice.tone ? `\nTONE: ${brandVoice.tone}` : ''}
 ${brandVoice.style ? `VOICE NOTES: ${brandVoice.style}` : ''}
 
 INPUTS:
-- What happened: ${answers.q1}
-- Who it's for: ${answers.q2 || 'founders and professionals'}
-- What the reader should do differently: ${answers.q5 || 'think differently about this topic'}
+- Topic: ${answers.q1}
+- Audience: ${answers.q2 || 'professionals and business owners'}
+- Key takeaway: ${answers.q5 || 'think differently about this topic'}
 
 VARIATION HOOKS — use a different hook type for each:
 1. Open with a specific number, stat, or concrete detail ("I lost $12K in 3 days.")
@@ -91,14 +100,15 @@ export function AIInterview() {
   const {
     aiAnswers: answers, aiStyle: style, aiVariations: variations,
     setAIAnswers: setAnswers, setAIStyle: setStyle, setAIVariations: setVariations,
-    brandVoice: storedBrandVoice,
+    brandVoice: storedBrandVoice, setBrandVoice: storeSetBrandVoice,
   } = useDataStore();
   const { ideas } = useLinkedInStore();
 
   const [isGenerating,   setIsGenerating]   = useState(false);
   const [generateError,  setGenerateError]  = useState<string | null>(null);
   const [fallbackPrompt, setFallbackPrompt] = useState<string | null>(null);
-  const [useBrandVoice,  setUseBrandVoice]  = useState(true);
+  const [voiceTone,  setVoiceTone]  = useState(storedBrandVoice?.tone  || 'professional');
+  const [voiceStyle, setVoiceStyle] = useState(storedBrandVoice?.style || '');
 
   // Pre-fill q1 from idea in store — instant, no API call
   useEffect(() => {
@@ -113,7 +123,8 @@ export function AIInterview() {
     setGenerateError(null);
     setFallbackPrompt(null);
 
-    const brandVoice = useBrandVoice ? (storedBrandVoice ?? {}) : {};
+    const brandVoice = { tone: voiceTone, style: voiceStyle };
+    storeSetBrandVoice(brandVoice);
 
     try {
       const result = await postsAPI.generateFromInterview({ answers, style, brand_voice: brandVoice });
@@ -145,13 +156,13 @@ export function AIInterview() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-3 h-full animate-fade-in">
+    <div className="flex flex-col gap-3 lg:h-full animate-fade-in">
 
       {/* Two-column grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-3 lg:flex-1 lg:min-h-0">
 
         {/* ── Left: Interview form ──────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-[#e8eaed] shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#e8eaed] shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col lg:overflow-hidden">
 
           {/* Card header */}
           <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#e8eaed] shrink-0">
@@ -165,16 +176,19 @@ export function AIInterview() {
           </div>
 
           {/* Form */}
-          <div className="flex-1 px-5 py-4 space-y-3 overflow-hidden">
+          <div className="lg:flex-1 lg:overflow-y-auto px-5 py-4 flex flex-col gap-4">
 
             {/* Questions */}
             {QUESTIONS.map((q, idx) => (
               <div key={q.key} className="space-y-1.5">
-                <label className="flex items-center gap-2 text-[13px] font-semibold text-[#111827]">
-                  <span className="h-5 w-5 rounded-full bg-[#0a66c2] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                <label className="flex items-center gap-1.5 font-semibold text-[#111827] text-[13px]">
+                  <span className="h-4 w-4 rounded-full bg-[#0a66c2] text-white text-[9px] font-bold flex items-center justify-center shrink-0">
                     {idx + 1}
                   </span>
                   {q.label}
+                  {'optional' in q && q.optional && (
+                    <span className="text-[11px] font-normal text-[#9ca3af]">(optional)</span>
+                  )}
                 </label>
                 <textarea
                   placeholder={q.placeholder}
@@ -186,54 +200,31 @@ export function AIInterview() {
               </div>
             ))}
 
-            {/* Style picker */}
+            {/* Tone picker */}
             <div className="space-y-2">
-              <p className="text-[13px] font-semibold text-[#111827]">Post style</p>
+              <p className="text-[13px] font-semibold text-[#111827] flex items-center gap-1.5">
+                <Mic2 className="h-3.5 w-3.5 text-[#0a66c2]" /> Voice tone
+              </p>
               <div className="grid grid-cols-3 gap-2">
-                {STYLE_OPTIONS.map((opt) => (
+                {TONE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setStyle(opt.value)}
+                    onClick={() => setVoiceTone(opt.value)}
                     className={cn(
-                      'rounded-lg border p-2.5 text-left transition-all duration-150',
-                      style === opt.value
+                      'rounded-lg border px-3 py-2.5 text-left transition-all duration-150 flex items-center gap-2',
+                      voiceTone === opt.value
                         ? 'border-[#0a66c2] bg-[#eff6ff]'
                         : 'border-[#e8eaed] bg-white hover:border-[#c8cdd5] hover:bg-[#f8f9fb]',
                     )}
                   >
-                    <span className="text-base leading-none">{opt.emoji}</span>
-                    <p className={cn('text-[12px] font-semibold mt-1.5', style === opt.value ? 'text-[#0a66c2]' : 'text-[#111827]')}>
+                    <span className="text-sm leading-none shrink-0">{opt.emoji}</span>
+                    <p className={cn('text-[12px] font-semibold truncate', voiceTone === opt.value ? 'text-[#0a66c2]' : 'text-[#111827]')}>
                       {opt.label}
                     </p>
-                    <p className="text-[11px] text-[#9ca3af] mt-0.5 leading-snug">{opt.description}</p>
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Brand voice toggle */}
-            <div className={cn(
-              'flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors',
-              useBrandVoice ? 'border-[#0a66c2]/30 bg-[#eff6ff]' : 'border-[#e8eaed] bg-[#f8f9fb]',
-            )}>
-              <div className="flex items-center gap-2 min-w-0">
-                <Mic2 className={cn('h-3.5 w-3.5 shrink-0', useBrandVoice ? 'text-[#0a66c2]' : 'text-[#9ca3af]')} />
-                <div className="min-w-0">
-                  <p className={cn('text-[12px] font-semibold', useBrandVoice ? 'text-[#0a66c2]' : 'text-[#6b7280]')}>
-                    Brand Voice
-                  </p>
-                  <p className="text-[11px] text-[#9ca3af] truncate">
-                    {useBrandVoice
-                      ? storedBrandVoice?.tone ? `Tone: ${storedBrandVoice.tone}` : 'Using your saved voice'
-                      : 'Off — generating without your voice'}
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={useBrandVoice}
-                onCheckedChange={setUseBrandVoice}
-              />
             </div>
 
             {/* Generate button */}
@@ -252,7 +243,7 @@ export function AIInterview() {
         </div>
 
         {/* ── Right: Results ───────────────────────────────────────────── */}
-        <div className="bg-white rounded-xl border border-[#e8eaed] shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col overflow-hidden">
+        <div className="bg-white rounded-xl border border-[#e8eaed] shadow-[0_1px_4px_rgba(0,0,0,0.05)] flex flex-col lg:min-h-0">
 
           {/* Card header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#e8eaed] shrink-0">
@@ -271,7 +262,7 @@ export function AIInterview() {
           </div>
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="lg:flex-1 lg:overflow-y-auto p-4 space-y-3">
 
             {/* Generating skeleton */}
             {isGenerating && (
@@ -365,8 +356,8 @@ export function AIInterview() {
                 </div>
 
                 {/* Post content */}
-                <div className="px-4 py-3">
-                  <p className="text-[13px] text-[#111827] leading-relaxed whitespace-pre-wrap line-clamp-6">
+                <div className="px-4 py-3 max-h-48 overflow-y-auto">
+                  <p className="text-[13px] text-[#111827] leading-relaxed whitespace-pre-wrap">
                     {variation.content}
                   </p>
                 </div>
