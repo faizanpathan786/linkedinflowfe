@@ -70,7 +70,7 @@ export function Navbar() {
           <Link to="/login">
             <Button
               variant="ghost"
-              className="hidden sm:inline-flex h-9 text-sm text-[#595959] hover:text-[#191919] hover:bg-[#f3f2ee]"
+              className="inline-flex h-9 text-sm text-[#595959] hover:text-[#191919] hover:bg-[#f3f2ee]"
             >
               Sign In
             </Button>
