@@ -77,8 +77,8 @@ export function LinkedInVault() {
             <div className="px-6 pb-5">
               <>
                   {/* Avatar + actions */}
-                  <div className="flex items-end justify-between -mt-10 mb-4 relative z-10">
-                    <div className="h-20 w-20 rounded-full border-4 border-white bg-[#0a66c2] flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+                  <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mt-0 sm:-mt-10 mb-4 relative z-10 gap-3">
+                    <div className="h-20 w-20 rounded-full border-4 border-white bg-[#0a66c2] flex items-center justify-center shadow-lg overflow-hidden shrink-0 -mt-10 sm:mt-0">
                       {profile?.pictureUrl ? (
                         <img src={profile.pictureUrl} alt="LinkedIn avatar" className="h-full w-full object-cover" />
                       ) : (
@@ -87,7 +87,7 @@ export function LinkedInVault() {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-12">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Button
                         variant="outline"
                         size="sm"

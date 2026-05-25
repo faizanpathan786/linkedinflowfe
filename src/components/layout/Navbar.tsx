@@ -75,7 +75,7 @@ export function Navbar() {
               Sign In
             </Button>
           </Link>
-          <a href="#early-access">
+          <a href="#early-access" className="hidden md:inline-flex">
             <Button
               className="h-9 px-5 text-sm bg-[#0a66c2] text-white hover:bg-[#004182] border-0
                          shadow-[0_0_18px_rgba(10,102,194,0.20)] hover:shadow-[0_0_28px_rgba(10,102,194,0.35)]

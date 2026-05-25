@@ -199,7 +199,7 @@ export function AIInterview() {
               <p className="text-[13px] font-semibold text-[#111827] flex items-center gap-1.5">
                 <Mic2 className="h-3.5 w-3.5 text-[#0a66c2]" /> Voice tone
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {TONE_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
