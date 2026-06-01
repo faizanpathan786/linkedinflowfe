@@ -653,7 +653,7 @@ export function Dashboard() {
               <Button
                 size="sm"
                 className="w-full h-8 text-[12px] rounded-lg bg-amber-500 hover:bg-amber-600 text-white border-0"
-                onClick={() => navigate('/dashboard/ai-interview')}
+                onClick={() => navigate('/dashboard/ideas')}
               >
                 <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Turn idea into post
               </Button>
