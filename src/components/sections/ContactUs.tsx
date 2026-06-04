@@ -3,7 +3,9 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail, MessageSquare, Clock, CheckCircle2, Send } from "lucide-react";
+import { Mail, MessageSquare, Clock, CheckCircle2, Send, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { contactAPI } from "@/lib/api";
 
 const VP = { once: false, amount: 0 } as const;
 
@@ -44,6 +46,45 @@ export function ContactUs() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: false, amount: 0 });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+
+  const update =
+    (key: "name" | "email" | "message") =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = form.name.trim();
+    const email = form.email.trim();
+    const message = form.message.trim();
+
+    if (!name || !email || !message) {
+      toast.error("Please fill in all fields.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const res = await contactAPI.submit({ name, email, message });
+      if (res?.success) {
+        toast.success("Thanks! Your message has been sent.");
+        setForm({ name: "", email: "", message: "" });
+        setSubmitted(true);
+      } else {
+        toast.error(res?.error || "Something went wrong, please try again.");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Something went wrong, please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const FIELDS = [
     { id: "contact-name",  label: "Name",    type: "text",  placeholder: "Your name",       autoComplete: undefined },
@@ -167,7 +208,7 @@ export function ContactUs() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, scale: 0.95, filter: "blur(6px)" }}
                 transition={{ duration: 0.3 }}
-                onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }}
+                onSubmit={handleSubmit}
                 className="p-7 md:p-9"
               >
                 <div className="grid gap-4 sm:grid-cols-2 mb-4">
@@ -187,6 +228,9 @@ export function ContactUs() {
                         type={f.type}
                         placeholder={f.placeholder}
                         autoComplete={f.autoComplete}
+                        disabled={loading}
+                        value={form[f.id === "contact-email" ? "email" : "name"]}
+                        onChange={update(f.id === "contact-email" ? "email" : "name")}
                         className="bg-[#f8fafc] border-[#dce6f1] text-[#191919] placeholder:text-[#86888a]
                                    focus:border-[#0a66c2]/50 focus:ring-[#0a66c2]/15 transition-all duration-200"
                       />
@@ -206,6 +250,9 @@ export function ContactUs() {
                     id="contact-message"
                     name="message"
                     placeholder="Tell us what you need help with"
+                    disabled={loading}
+                    value={form.message}
+                    onChange={update("message")}
                     className="min-h-36 bg-[#f8fafc] border-[#dce6f1] text-[#191919] placeholder:text-[#86888a]
                                focus:border-[#0a66c2]/50 focus:ring-[#0a66c2]/15 transition-all duration-200 resize-none"
                   />
@@ -221,11 +268,17 @@ export function ContactUs() {
                   <p className="text-sm text-[#86888a]">We usually respond within one business day.</p>
                   <Button
                     type="submit"
+                    disabled={loading}
                     className="w-full sm:w-auto bg-[#0a66c2] text-white hover:bg-[#004182] border-0
                                font-semibold shadow-[0_0_20px_rgba(10,102,194,0.18)]
-                               hover:shadow-[0_0_32px_rgba(10,102,194,0.32)] transition-all duration-200"
+                               hover:shadow-[0_0_32px_rgba(10,102,194,0.32)] transition-all duration-200
+                               disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-4 h-4 mr-2" /> Send message
+                    {loading ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending…</>
+                    ) : (
+                      <><Send className="w-4 h-4 mr-2" /> Send message</>
+                    )}
                   </Button>
                 </motion.div>
               </motion.form>

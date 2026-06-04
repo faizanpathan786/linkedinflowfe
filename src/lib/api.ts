@@ -655,4 +655,13 @@ export const earlyAccessAPI = {
   },
 };
 
+// ── Contact ───────────────────────────────────────────────────────────────────
+
+export const contactAPI = {
+  submit: async (data: { name: string; email: string; message: string }) => {
+    const response = await api.post('/api/contact', data);
+    return response.data as { success: boolean; error?: string };
+  },
+};
+
 export default api;
