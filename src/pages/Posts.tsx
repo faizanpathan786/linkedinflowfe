@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ImportModal } from '@/components/posts/ImportModal';
 import { EditPostModal } from '@/components/posts/EditPostModal';
+import { ConnectLinkedInOnboardModal } from '@/components/posts/ConnectLinkedInOnboardModal';
 
 type StatusFilter = 'all' | 'draft' | 'scheduled' | 'published' | 'failed';
 type ExtPost = Omit<Post, 'status'> & { status: Post['status'] | 'publishing' };
@@ -319,10 +320,12 @@ function PostCard({
 // ── Posts page ────────────────────────────────────────────────────────────────
 
 export function Posts() {
-  const { posts, setPosts, removePost } = useLinkedInStore();
+  const { posts, setPosts, removePost, linkedInStatus } = useLinkedInStore();
+  const isLinkedInConnected = Boolean(linkedInStatus?.isConnected && !linkedInStatus?.isExpired);
   const [isFetching,       setIsFetching]       = useState(posts.length === 0);
   const [fetchError,       setFetchError]        = useState<string | null>(null);
   const [importOpen,       setImportOpen]        = useState(false);
+  const [connectOpen,      setConnectOpen]       = useState(false);
   const [editingPost,      setEditingPost]       = useState<Post | null>(null);
   const [searchQuery,      setSearchQuery]       = useState('');
   const [selectedIds,      setSelectedIds]       = useState<Set<string>>(new Set());
@@ -365,10 +368,17 @@ export function Posts() {
 
   useEffect(() => {
     if (searchParams.get('import') === '1') {
-      setImportOpen(true);
+      if (isLinkedInConnected) setImportOpen(true);
+      else setConnectOpen(true);
       setSearchParams({}, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, isLinkedInConnected]);
+
+  // Bulk import requires a connected LinkedIn account — otherwise prompt to connect.
+  const openImport = () => {
+    if (!isLinkedInConnected) { setConnectOpen(true); return; }
+    setImportOpen(true);
+  };
 
   const handleDelete      = (id: string) => {
     removePost(id);
@@ -505,7 +515,7 @@ export function Posts() {
               <span className="hidden sm:inline">Pause all</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}
+          <Button variant="outline" size="sm" onClick={openImport}
             className="h-8 text-[13px] rounded-lg border-[#e8eaed] text-[#374151] hover:bg-[#f8f9fb] gap-1.5">
             <FileUp className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Import</span>
@@ -683,6 +693,8 @@ export function Posts() {
             .finally(() => setIsFetching(false));
         }}
       />
+
+      <ConnectLinkedInOnboardModal open={connectOpen} onDismiss={() => setConnectOpen(false)} />
 
       <PublishLogModal postId={logPostId} onClose={() => setLogPostId(null)} />
     </div>
