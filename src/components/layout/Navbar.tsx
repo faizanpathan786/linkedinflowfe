@@ -29,7 +29,7 @@ export function Navbar() {
     <motion.nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/92 backdrop-blur-xl border-b border-[#e0dfdc] shadow-[0_1px_20px_rgba(0,0,0,0.08)]"
+          ? "bg-white/92 dark:bg-[#141416]/90 backdrop-blur-xl border-b border-[#e0dfdc] dark:border-[#2a2a2d] shadow-[0_1px_20px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_20px_rgba(0,0,0,0.55)]"
           : "bg-transparent border-b border-transparent"
       }`}
       initial={{ y: -24, opacity: 0 }}

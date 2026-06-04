@@ -141,20 +141,18 @@ export function ContactUs() {
             transition={{ delay: 0.6 }}
           >
             <Mail className="w-4 h-4 shrink-0" />
-            <span>hello@linkedinflow.com</span>
+            <a href="mailto:linkedinflow22@gmail.com" className="hover:text-[#0a66c2] transition-colors">linkedinflow22@gmail.com</a>
           </motion.div>
         </div>
 
         {/* FORM CARD */}
         <motion.div
-          className="relative rounded-2xl overflow-hidden"
+          className="relative rounded-2xl overflow-hidden bg-white dark:bg-[#1a1a1c] border border-[#dce6f1] dark:border-[#2a2a2d]"
           initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
           whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
           viewport={VP}
           transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           style={{
-            background: "#ffffff",
-            border: "1px solid #dce6f1",
             boxShadow: "0 8px 32px rgba(10,102,194,0.07), 0 2px 8px rgba(0,0,0,0.04)",
           }}
         >

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Link2, PenTool, BarChart3 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const steps = [
   {
@@ -34,6 +35,8 @@ const cardVariants = {
 
 export function HowItWorks() {
   const [active, setActive] = useState(0);
+  const { actualTheme } = useTheme();
+  const isDark = actualTheme === "dark";
 
   useEffect(() => {
     const id = setInterval(() => setActive(p => (p + 1) % steps.length), INTERVAL_MS);
@@ -78,9 +81,9 @@ export function HowItWorks() {
             >
               <motion.div
                 animate={{
-                  borderColor: active === i ? "#0a66c2" : "#e0dfdc",
+                  borderColor: active === i ? "#0a66c2" : (isDark ? "#2a2a2d" : "#e0dfdc"),
                   boxShadow: active === i ? "0 0 0 4px rgba(10,102,194,0.12)" : "none",
-                  backgroundColor: active === i ? "#eef3f8" : "#ffffff",
+                  backgroundColor: active === i ? (isDark ? "#1b2230" : "#eef3f8") : (isDark ? "#1a1a1c" : "#ffffff"),
                 }}
                 transition={{ duration: 0.35 }}
                 className="w-12 h-12 rounded-full border-2 flex items-center justify-center mb-3 relative"
@@ -90,8 +93,8 @@ export function HowItWorks() {
                 </motion.span>
                 <motion.div
                   animate={{
-                    backgroundColor: active === i ? "#0a66c2" : "#dce6f1",
-                    color: active === i ? "#ffffff" : "#86888a",
+                    backgroundColor: active === i ? "#0a66c2" : (isDark ? "#2a2a2d" : "#dce6f1"),
+                    color: active === i ? "#ffffff" : (isDark ? "#8a8a8d" : "#86888a"),
                   }}
                   transition={{ duration: 0.3 }}
                   className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm"
@@ -120,10 +123,8 @@ export function HowItWorks() {
         >
           <div className="absolute inset-x-[10%] -top-6 h-32 bg-[#0a66c2]/8 blur-3xl rounded-full pointer-events-none" />
           <div
-            className="relative w-full max-w-2xl rounded-2xl overflow-hidden"
+            className="relative w-full max-w-2xl rounded-2xl overflow-hidden bg-white dark:bg-[#1a1a1c] border border-[#dce6f1] dark:border-[#2a2a2d]"
             style={{
-              background: "#ffffff",
-              border: "1px solid #dce6f1",
               boxShadow: "0 8px 32px rgba(10,102,194,0.08), 0 2px 8px rgba(0,0,0,0.04)",
             }}
           >

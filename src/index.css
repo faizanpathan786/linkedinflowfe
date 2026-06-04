@@ -154,15 +154,15 @@
 
   /* ── Typography scale ──────────────────── */
   .page-title {
-    @apply text-[30px] md:text-[34px] font-bold tracking-tight text-[#191919] leading-tight;
+    @apply text-[30px] md:text-[34px] font-bold tracking-tight text-foreground leading-tight;
   }
 
   .page-description {
-    @apply text-[13px] md:text-sm text-[#595959] mt-1 leading-relaxed;
+    @apply text-[13px] md:text-sm text-muted-foreground mt-1 leading-relaxed;
   }
 
   .section-label {
-    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-[#86888a];
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
   }
 
   /* ── Cards ─────────────────────────────── */
@@ -250,11 +250,11 @@
 
   /* ── Sidebar nav item ──────────────────── */
   .sidebar-item {
-    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-100 cursor-pointer select-none text-black border border-transparent;
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-100 cursor-pointer select-none text-foreground border border-transparent;
   }
 
   .sidebar-item:hover {
-    @apply bg-[#f1f3f6] text-black;
+    @apply bg-muted text-foreground;
   }
 
   .sidebar-item.active {
@@ -329,12 +329,23 @@
 .dark .bg-\[\#f9fafb\]         { background-color: #252525 !important; }
 .dark .bg-\[\#eff6ff\]         { background-color: #1a2535 !important; }
 
+/* Landing-page surfaces */
+.dark .bg-\[\#eef3f8\]         { background-color: #141416 !important; }
+.dark .bg-\[\#f3f2ee\]         { background-color: #1a1a1c !important; }
+.dark .bg-\[\#f5f5f2\]         { background-color: #141416 !important; }
+.dark .bg-\[\#dce6f1\]         { background-color: #2a2a2d !important; }
+/* eef3f8 used as a from-gradient stop on landing */
+.dark .from-\[\#eef3f8\]       { --tw-gradient-from: #141416 var(--tw-gradient-from-position) !important;
+                                 --tw-gradient-to: rgb(20 20 22 / 0) var(--tw-gradient-to-position) !important;
+                                 --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
+
 /* Text */
 .dark .text-\[\#111827\]       { color: #f5f5f5 !important; }
 .dark .text-\[\#191919\]       { color: #f5f5f5 !important; }
 .dark .text-\[\#374151\]       { color: #d4d4d4 !important; }
-.dark .text-\[\#595959\]       { color: #999999 !important; }
+.dark .text-\[\#595959\]       { color: #a3a3a3 !important; }
 .dark .text-\[\#6b7280\]       { color: #888888 !important; }
+.dark .text-\[\#86888a\]       { color: #8a8a8d !important; }
 .dark .text-\[\#9ca3af\]       { color: #666666 !important; }
 .dark .text-\[\#d1d5db\]       { color: #404040 !important; }
 
@@ -370,6 +381,97 @@
 .dark .bg-\[\#0a66c2\]\/\[0\.015\] { background-color: rgba(10,102,194,0.06) !important; }
 .dark .border-\[\#0a66c2\]\/30    { border-color: rgba(10,102,194,0.35) !important; }
 .dark .text-\[\#0a66c2\]          { color: #4d9de0 !important; }
+/* White-on-blue CTA button (FinalCTA) → keep text white in dark, not blue */
+.dark .bg-white.text-\[\#0a66c2\] { color: #ffffff !important; }
+
+/* ── Remaining base surfaces (low-frequency tints) ───────────── */
+/* Cream / off-white panels */
+.dark .bg-\[\#f3f2ef\],
+.dark .bg-\[\#f4efe6\],
+.dark .bg-\[\#fdfaf5\]          { background-color: #1a1a1c !important; }
+/* Neutral greys used as surfaces */
+.dark .bg-\[\#e8eaed\],
+.dark .bg-\[\#e5e7eb\],
+.dark .bg-\[\#e0dfdc\],
+.dark .bg-\[\#d1d5db\],
+.dark .bg-\[\#9ca3af\]          { background-color: #2a2a2d !important; }
+/* Blue-tinted surfaces */
+.dark .bg-\[\#f0f4f8\],
+.dark .bg-\[\#f8fbff\],
+.dark .bg-\[\#f5f8fe\],
+.dark .bg-\[\#f4f7fa\],
+.dark .bg-\[\#f0f4ff\],
+.dark .bg-\[\#f0f3f6\],
+.dark .bg-\[\#e8eef5\]          { background-color: #1b2230 !important; }
+/* Green / red status tints */
+.dark .bg-\[\#f4fdf7\]          { background-color: #14241b !important; }
+.dark .bg-\[\#fef5f5\]          { background-color: #2a1818 !important; }
+
+.dark .text-\[\#101010\],
+.dark .text-\[\#1a1d23\]        { color: #f5f5f5 !important; }
+.dark .text-\[\#a0a7af\]        { color: #8a8a8d !important; }
+
+.dark .border-\[\#f0f0f0\],
+.dark .border-\[\#e0e0e0\],
+.dark .border-\[\#e5e7eb\],
+.dark .border-\[\#f0f3f6\]      { border-color: #2a2a2d !important; }
+.dark .border-\[\#9ca3af\]      { border-color: #383838 !important; }
+
+/* ── Hover states (the override net misses these by default) ─── */
+/* Hover backgrounds: light surface → dark surface */
+.dark .hover\:bg-\[\#f8f9fb\]:hover,
+.dark .hover\:bg-\[\#fafafa\]:hover,
+.dark .hover\:bg-\[\#f3f4f6\]:hover,
+.dark .hover\:bg-\[\#e8eaed\]:hover,
+.dark .hover\:bg-\[\#f3f2ee\]:hover,
+.dark .hover\:bg-\[\#f0f4f8\]:hover,
+.dark .hover\:bg-\[\#eef3f8\]:hover { background-color: #2a2a2d !important; }
+
+/* Hover text: dark ink → light */
+.dark .hover\:text-\[\#111827\]:hover,
+.dark .hover\:text-\[\#191919\]:hover,
+.dark .hover\:text-\[\#1a1d23\]:hover,
+.dark .hover\:text-\[\#374151\]:hover { color: #f5f5f5 !important; }
+.dark .hover\:text-\[\#595959\]:hover,
+.dark .hover\:text-\[\#6b7280\]:hover { color: #b4b4b6 !important; }
+
+/* Hover borders */
+.dark .hover\:border-\[\#c8cdd5\]:hover,
+.dark .hover\:border-\[\#d1d5db\]:hover,
+.dark .hover\:border-\[\#e8eaed\]:hover { border-color: #3a3a3d !important; }
+
+/* group-hover text (cards that lighten a heading on hover) */
+.dark .group:hover .group-hover\:text-\[\#191919\] { color: #f5f5f5 !important; }
+
+/* ── Named Tailwind light colors (net is hex-only) ───────────── */
+/* NOTE: slate-800/900 are intentionally dark surfaces — left untouched. */
+.dark .bg-gray-50,
+.dark .bg-slate-50,
+.dark .bg-gray-100,
+.dark .bg-slate-100             { background-color: #1f1f22 !important; }
+.dark .bg-gray-200,
+.dark .bg-slate-200             { background-color: #2a2a2d !important; }
+.dark .hover\:bg-white:hover    { background-color: #242427 !important; }
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-gray-100:hover { background-color: #2a2a2d !important; }
+
+.dark .text-black,
+.dark .text-gray-900,
+.dark .text-slate-900          { color: #f5f5f5 !important; }
+.dark .text-gray-800,
+.dark .text-slate-800          { color: #e0e0e0 !important; }
+.dark .text-gray-700,
+.dark .text-slate-700          { color: #c8c8c8 !important; }
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-slate-100,
+.dark .border-slate-200        { border-color: #2a2a2d !important; }
+
+/* Light gradient stop used on a card */
+.dark .from-\[\#e8f0fe\]        { --tw-gradient-from: #16202e var(--tw-gradient-from-position) !important;
+                                  --tw-gradient-to: rgb(22 32 46 / 0) var(--tw-gradient-to-position) !important;
+                                  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important; }
 
 /* ── Scrollbars ─────────────────────────────────────────────── */
 .scrollbar-hide {

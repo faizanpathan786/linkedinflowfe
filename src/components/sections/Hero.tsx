@@ -80,7 +80,7 @@ export function Hero() {
                       <motion.span key={word} className="inline-block">
                         <span className={isHighlight
                           ? "bg-gradient-to-b from-[#55b6ff] via-[#1f86f3] to-[#0a66c2] bg-clip-text text-transparent"
-                          : "bg-gradient-to-b from-[#2f3746] via-[#3a4352] to-[#596273] bg-clip-text text-transparent"
+                          : "bg-gradient-to-b from-[#2f3746] via-[#3a4352] to-[#596273] dark:from-[#ffffff] dark:via-[#ededed] dark:to-[#cfcfcf] bg-clip-text text-transparent"
                         }>
                           {word}
                         </span>
