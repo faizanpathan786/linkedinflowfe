@@ -102,7 +102,7 @@ export function EarlyAccess() {
                   onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   disabled={loading}
-                  className="flex-1 h-12 px-4 rounded-full text-sm bg-white border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors shadow-sm disabled:opacity-60"
+                  className="w-full sm:flex-1 h-12 px-4 rounded-full text-sm bg-white border border-[#dce6f1] text-[#191919] placeholder:text-[#86888a] focus:outline-none focus:border-[#0a66c2] focus:ring-2 focus:ring-[#0a66c2]/20 transition-colors shadow-sm disabled:opacity-60"
                 />
                 <button
                   type="submit"
