@@ -462,6 +462,15 @@
 .dark .text-slate-800          { color: #e0e0e0 !important; }
 .dark .text-gray-700,
 .dark .text-slate-700          { color: #c8c8c8 !important; }
+/* Muted greys — readable on dark (weekday labels, pills, helper text) */
+.dark .text-gray-600,
+.dark .text-slate-600          { color: #b4b4b6 !important; }
+.dark .text-gray-500,
+.dark .text-slate-500          { color: #9a9a9d !important; }
+.dark .text-gray-400,
+.dark .text-slate-400          { color: #7d7d80 !important; }
+.dark .hover\:text-gray-600:hover,
+.dark .hover\:text-gray-700:hover { color: #e6e6e6 !important; }
 
 .dark .border-gray-100,
 .dark .border-gray-200,

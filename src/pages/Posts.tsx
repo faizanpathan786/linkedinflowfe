@@ -430,16 +430,32 @@ export function Posts() {
     const scheduledIds = posts.filter(p => p.status === 'scheduled').map(p => p.id);
     if (scheduledIds.length === 0) { toast.info('No scheduled posts to pause.'); return; }
     setIsPausingAll(true);
+    // Process in small sequential batches: firing every request at once exceeds the
+    // browser's per-host connection limit, so queued requests hit the axios timeout
+    // and only a handful succeed. Batching keeps every request within its timeout.
+    const BATCH_SIZE = 4;
+    const succeeded: string[] = [];
+    let failed = 0;
     try {
-      const results = await Promise.allSettled(
-        scheduledIds.map(id => postsAPI.updatePost(id, { scheduled_at: null }))
-      );
-      const succeeded = scheduledIds.filter((_, i) => results[i].status === 'fulfilled');
+      for (let i = 0; i < scheduledIds.length; i += BATCH_SIZE) {
+        const batch = scheduledIds.slice(i, i + BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map(id => postsAPI.updatePost(id, { scheduled_at: null }))
+        );
+        results.forEach((r, j) => {
+          if (r.status === 'fulfilled') succeeded.push(batch[j]);
+          else failed += 1;
+        });
+      }
       if (succeeded.length > 0) {
-        setPosts(posts.map(p =>
+        setPosts(postsRef.current.map(p =>
           succeeded.includes(p.id) ? { ...p, status: 'draft' as const, scheduled_at: undefined } : p
         ));
+      }
+      if (failed === 0) {
         toast.success(`Paused ${succeeded.length} scheduled post${succeeded.length > 1 ? 's' : ''} — moved to drafts.`);
+      } else {
+        toast.warning(`Paused ${succeeded.length} of ${scheduledIds.length} — ${failed} failed. Tap Pause all again to retry the rest.`);
       }
     } finally {
       setIsPausingAll(false);
